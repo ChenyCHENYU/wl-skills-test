@@ -1,6 +1,6 @@
 {
   "name": "@agile-team/wl-skills-test",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "测试工程 AI 技能包 — 11 条测试规范、12 个 AI Skill、7 个 MCP 工具、契约驱动用例生成，与 design/kit/ui/bd 四包协作形成设计→开发→测试完整闭环",
   "type": "module",
   "main": "./lib/index.js",
@@ -16,6 +16,7 @@
     "bin/",
     "lib/",
     "mcp/",
+    "scripts/",
     "files/",
     "docs/",
     "README.md",

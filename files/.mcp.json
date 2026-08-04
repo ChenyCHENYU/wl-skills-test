@@ -1,9 +1,8 @@
 {
   "mcpServers": {
     "wl-skills-test": {
-      "command": "node",
-      "args": ["./node_modules/@agile-team/wl-skills-test/mcp/server.js"],
-      "env": {}
+      "command": "npx",
+      "args": ["@agile-team/wl-skills-test", "--mcp"]
     }
   }
 }

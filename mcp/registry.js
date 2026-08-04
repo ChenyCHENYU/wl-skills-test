@@ -1,6 +1,6 @@
 /**
  * MCP 工具注册表 — wls_test_* 前缀
- * 第二阶段实现具体 handler，当前为骨架
+ * 工具前缀 wls_test_*，7 个工具已全部实现并有测试覆盖
  */
 
 export const TOOL_PREFIX = "wls_test";

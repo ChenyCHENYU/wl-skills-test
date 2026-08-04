@@ -2,7 +2,7 @@
 
 ## 项目上下文
 
-本项目使用 `@agile-team/wl-skills-test`（v0.1.0）测试工程技能包，包含 11 条测试规范和 12 个 AI Skill。
+本项目使用 `@agile-team/wl-skills-test` 测试工程技能包，包含 11 条测试规范和 12 个 AI Skill。
 
 ## 技能加载
 

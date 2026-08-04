@@ -7,7 +7,7 @@ import { HANDLERS } from "./tools/handlers.js";
 export function createServer() {
   return {
     name: `${TOOL_PREFIX}-server`,
-    version: "0.2.0",
+    version: "0.3.1",
 
     listTools() {
       return TOOL_DESCRIPTORS;

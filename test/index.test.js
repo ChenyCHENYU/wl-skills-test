@@ -176,3 +176,71 @@ test("test-codegen: generateFromContract 不再崩溃", () => {
     rmSync(tmpFile, { force: true });
   }
 });
+
+test("contract-consumer: bd 契约生成 CRUD 用例矩阵", () => {
+  const bdContract = {
+    schemaVersion: 1,
+    contractId: "sale-order",
+    profile: "jh4j3-openapi3",
+    rootPackage: "com.jhict.sale",
+    module: "saleOrder",
+    entity: { name: "SaleOrder", table: "SALE_ORDER", description: "销售订单" },
+    api: {
+      requestPath: "saleOrder",
+      externalBasePath: "/sale/saleOrder",
+      permissionPrefix: "sale_order",
+      permissions: {
+        page: "sale_order_query_page",
+        create: "sale_order_save",
+        update: "sale_order_update_by_id",
+        remove: "sale_order_delete_by_id",
+        detail: "sale_order_get_by_id",
+      },
+    },
+    database: "oracle",
+    migration: { version: "20260805_000000", rollbackStrategy: "DROP TABLE SALE_ORDER", verificationSql: ["SELECT COUNT(*) FROM SALE_ORDER"] },
+    fields: [
+      { name: "orderNo", column: "ORDER_NO", javaType: "String", dbType: "VARCHAR2(50)", comment: "订单号", writable: true, requiredOnCreate: true },
+      { name: "amount", column: "AMOUNT", javaType: "BigDecimal", dbType: "NUMBER(18,2)", comment: "金额", writable: true, requiredOnCreate: false },
+    ],
+  };
+  const tmpFile = join(process.cwd(), ".tmp-bd-contract.json");
+  writeFileSync(tmpFile, JSON.stringify(bdContract));
+  try {
+    const result = consumeContract(tmpFile);
+    assert.equal(result.type, "bd-contract");
+    assert.ok(result.summary.operations.length >= 5, "bd 应至少有 5 个标准操作");
+    const cases = generateTestCaseMatrix(result.summary);
+    assert.ok(cases.length >= 8, "bd 契约应生成足够的用例");
+    assert.ok(cases.some((c) => c.name.includes("queryPage") || c.name.includes("page")), "应包含查询用例");
+    assert.ok(cases.some((c) => c.name.includes("save") || c.name.includes("create")), "应包含新增用例");
+    assert.ok(cases.some((c) => c.name.includes("orderNo 必填校验")), "应包含必填校验");
+  } finally {
+    rmSync(tmpFile, { force: true });
+  }
+});
+
+test("contract-consumer: page-spec 推断 CRUD 操作", () => {
+  const pageSpec = {
+    page: "订单列表",
+    mode: "LIST",
+    dir: "/views/order/list",
+    query: [{ name: "orderNo", label: "订单号", type: "input" }],
+    toolbar: [{ label: "新增", color: "primary", action: "openModal" }],
+    operations: [{ label: "编辑", action: "edit" }, { label: "删除", action: "delete" }],
+  };
+  const tmpFile = join(process.cwd(), ".tmp-page-spec2.json");
+  writeFileSync(tmpFile, JSON.stringify(pageSpec));
+  try {
+    const result = consumeContract(tmpFile);
+    assert.equal(result.type, "page-spec");
+    assert.ok(result.summary.operations.length >= 3, "page-spec 应推断出至少 3 个 CRUD 操作");
+    assert.ok(result.summary.operations.some((o) => o.key === "page"), "应推断查询操作");
+    assert.ok(result.summary.operations.some((o) => o.key === "create"), "应推断新增操作");
+    assert.ok(result.summary.operations.some((o) => o.key === "remove"), "应推断删除操作");
+    const cases = generateTestCaseMatrix(result.summary);
+    assert.ok(cases.length > 0, "page-spec 也应能生成用例");
+  } finally {
+    rmSync(tmpFile, { force: true });
+  }
+});
