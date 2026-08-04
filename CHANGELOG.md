@@ -8,6 +8,25 @@
 
 ---
 
+## [0.2.1] — 2026-08-05（ESM 兼容性修复 + 全命令可用）
+
+### Fixed
+
+- 修复 ESM 包内混用 `require()` 的致命 bug（init/run-gen/write-guard/MCP case_generate 全部恢复可用）。
+- `lib/index.js`：顶层统一 `import`（fs/path/child_process/contract-consumer/test-codegen），删除所有 `require()`。
+- `lib/test-codegen.js`：`generateFromContract` 改为静态 import consumeContract。
+- `lib/write-guard.js`：`confirmAndWrite` 改为 import + 实现失败回滚（备份→写入→失败恢复）。
+- `mcp/tools/handlers.js`：全部改为 import + 路径用 fileURLToPath 替代 URL pathname hack。
+- `lib/index.js` `cmdClean`：实现真删除（rmSync recursive），不再是 stub。
+- `lib/index.js` `cmdDoctor`：`checkCommand` 改为顶层 import execSync，Playwright/JMeter 检测恢复正常。
+- `package.json` scripts：移除不存在的 check.js/lint-skills.js，改为直接 `node --test`。
+
+### Added
+
+- 新增 5 个回归测试（confirmAndWrite 写入/哈希/生产阻断、consumeContract 契约消费、generateFromContract），总计 15 测试全通过。
+
+---
+
 ## [0.2.0] — 2026-08-04（生态连接 + 自动化执行）
 
 ### 第二阶段：生态连接

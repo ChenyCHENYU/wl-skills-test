@@ -2,14 +2,14 @@
  * MCP 工具 Handler 实现
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
 import { consumeContract, generateTestCaseMatrix } from "../../lib/contract-consumer.js";
-import {
-  generateFromContract,
-  generateSmokeSuite,
-  calculateDI,
-  exportCasesMarkdown,
-} from "../../lib/test-codegen.js";
+import { generateSmokeSuite, calculateDI, exportCasesMarkdown } from "../../lib/test-codegen.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG_ROOT = resolve(__dirname, "..", "..");
 
 // ── wls_test_standards ─────────────────────────
 export function handleStandards(args) {
@@ -37,12 +37,22 @@ export function handleContractRead(args) {
 
 // ── wls_test_case_generate ─────────────────────
 export function handleCaseGenerate(args) {
-  if (args.contractPath) {
-    const result = generateFromContract(args.contractPath, { type: args.type });
+  if (args.contractPath && existsSync(args.contractPath)) {
+    const result = consumeContract(args.contractPath);
+    const cases = generateTestCaseMatrix(result.summary);
+    const apiTests = cases.filter((c) => c.type === "api").length;
+    const permTests = cases.filter((c) => c.type === "permission").length;
+    const boundTests = cases.filter((c) => c.type === "boundary").length;
     return {
-      caseCount: result.caseCount,
-      summary: result.summary,
-      cases: result.cases,
+      caseCount: cases.length,
+      summary: {
+        entity: result.summary.entity || result.summary.pageName,
+        module: result.summary.module,
+        apiTests,
+        permissionTests: permTests,
+        boundaryTests: boundTests,
+      },
+      cases,
     };
   }
   return {
@@ -54,7 +64,6 @@ export function handleCaseGenerate(args) {
 export function handleSmokeSelect(args) {
   const complexity = args.complexity || "medium";
   if (args.casePath && existsSync(args.casePath)) {
-    // 从文件读取用例（JSON 格式）
     const cases = JSON.parse(readFileSync(args.casePath, "utf-8"));
     const suite = generateSmokeSuite(cases, { complexity });
     return suite;
@@ -68,7 +77,7 @@ export function handleSmokeSelect(args) {
 export function handleEnvCheck(args) {
   const checks = {
     nodeVersion: process.version,
-    playwright: checkPackage("@playwright/test"),
+    playwright: checkCommand("npx playwright --version"),
     jmeter: checkCommand("jmeter --version"),
     standardsDir: existsSync(join(process.cwd(), ".github", "standards")),
     skillsDir: existsSync(join(process.cwd(), ".github", "skills")),
@@ -94,15 +103,12 @@ export function handleJmeterValidate(args) {
   const content = readFileSync(jmxPath, "utf-8");
   const issues = [];
 
-  // 基础 XML 结构检查
   if (!content.includes("<jmeterTestPlan")) {
     issues.push({ severity: "fatal", message: "缺少 <jmeterTestPlan> 根元素" });
   }
   if (!content.includes("<ThreadGroup")) {
     issues.push({ severity: "fatal", message: "缺少线程组 <ThreadGroup>" });
   }
-
-  // ConfigTestElement 致命坑（11 条强制规则之一）
   if (content.includes("ConfigTestElement") && content.includes('guiclass="TestPlanGui"')) {
     issues.push({
       severity: "fatal",
@@ -110,19 +116,17 @@ export function handleJmeterValidate(args) {
     });
   }
 
-  // SteppingThreadGroup 属性名必须小写空格
   const steppingMatch = content.match(/<SteppingThreadGroup[\s\S]*?>/);
   if (steppingMatch) {
     const block = steppingMatch[0];
     if (block.includes("threads") || block.includes("rampUp")) {
       issues.push({
         severity: "fatal",
-        message: "SteppingThreadGroup 属性名必须用小写空格格式（如 'Thread Group 1' 而非 'ThreadGroup1'）",
+        message: "SteppingThreadGroup 属性名必须用小写空格格式",
       });
     }
   }
 
-  // 必须包含聚合报告
   if (!content.includes("ResultCollector") && !content.includes("SummaryReport")) {
     issues.push({ severity: "warning", message: "建议包含聚合报告或查看结果树" });
   }
@@ -136,16 +140,14 @@ export function handleJmeterValidate(args) {
 
 // ── 辅助函数 ──────────────────────────────────
 function findStandardFile(id) {
-  const pkgRoot = resolve(new URL("../../", import.meta.url).pathname.replace(/^\//, ""));
-  const dir = join(pkgRoot, "files", ".github", "standards");
+  const dir = join(PKG_ROOT, "files", ".github", "standards");
   if (!existsSync(dir)) return null;
   const files = readdirSync(dir).filter((f) => f.startsWith(id) && f.endsWith(".md"));
   return files.length > 0 ? join(dir, files[0]) : null;
 }
 
 function listStandards() {
-  const pkgRoot = resolve(new URL("../../", import.meta.url).pathname.replace(/^\//, ""));
-  const dir = join(pkgRoot, "files", ".github", "standards");
+  const dir = join(PKG_ROOT, "files", ".github", "standards");
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((f) => f.endsWith(".md") && f !== "index.md")
@@ -160,18 +162,9 @@ function listStandards() {
     });
 }
 
-function checkPackage(pkgName) {
-  try {
-    const mainPath = require.resolve(pkgName, { paths: [process.cwd()] });
-    return !!mainPath;
-  } catch {
-    return false;
-  }
-}
-
 function checkCommand(cmd) {
   try {
-    require("node:child_process").execSync(cmd, { stdio: "ignore", timeout: 5000 });
+    execSync(cmd, { stdio: "ignore", timeout: 5000 });
     return true;
   } catch {
     return false;
