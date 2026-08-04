@@ -6,13 +6,13 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.4.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.5.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-12-purple.svg" />
-  <img src="https://img.shields.io/badge/MCP-10-teal.svg" />
-  <img src="https://img.shields.io/badge/audit-T1--T12-red.svg" />
-  <img src="https://img.shields.io/badge/tests-42%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/MCP-12-teal.svg" />
+  <img src="https://img.shields.io/badge/audit-T1--T20-red.svg" />
+  <img src="https://img.shields.io/badge/tests-48%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -60,6 +60,12 @@ npx @agile-team/wl-skills-test fix --target ./tests/
 
 # 执行 API 接口测试（从契约自动发请求）
 npx @agile-team/wl-skills-test run-api --contract ./wl-contract.json --base-url http://localhost:8080
+
+# 执行 Playwright 自动化测试
+npx @agile-team/wl-skills-test run-playwright --test-dir ./tests/
+
+# 执行 JMeter 性能测试
+npx @agile-team/wl-skills-test run-jmeter --jmx ./perf-test.jmx --threads 200
 ```
 
 安装后，AI 编辑器自动识别 `.github/skills/` 下的 12 个 Skill 和 `.github/standards/` 下的 11 条规范。
@@ -226,13 +232,13 @@ wl-skills-test/
 |------|:----:|------|
 | 测试规范 | 11 | 对齐在线 QC 流程规范 |
 | AI Skill | 12 | 功能链 9 + 性能链 3 |
-| MCP 工具 | 10 | wls_test_* 前缀，全部实现并有测试 |
-| 审计规则 | 12 | T1-T12 确定性扫描器（Playwright/JMeter/用例） |
-| 自动修复 | 3 | F1-F3（v-deep/beforeEach/waitForTimeout） |
-| API 执行 | 1 | run-api 零依赖 HTTP 请求验证 + 冒烟报告 |
+| MCP 工具 | 12 | wls_test_* 前缀，全部实现并有测试 |
+| 审计规则 | 20 | T1-T20 确定性扫描器（Playwright/JMeter/用例/覆盖率） |
+| 自动修复 | 6 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码/afterEach/测试名） |
+| 执行器 | 3 | run-api（HTTP）/ run-playwright / run-jmeter + jtl 解析 |
 | 契约格式 | 3 | wl-api-contract / wl-contract / page-spec |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元测试 | 42 | 全部通过 |
+| 单元测试 | 48 | 全部通过 |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
@@ -254,16 +260,17 @@ wl-skills-test/
 | | Playwright 脚本生成 | ✅ | 完整 | 从 page-spec/契约生成选择器+数据闭环 |
 | | JMeter 脚本生成 | ✅ | 完整 | 从契约 operations 生成，遵循 11 条 XML 规则 |
 | | API 接口测试执行 | ✅ | 完整 | run-api 从契约自动发起 HTTP 请求验证 + 冒烟报告 |
-| | Playwright 执行 | ❌ | 缺失 | 可生成脚本但无法调用 `playwright test` |
-| | JMeter 执行 | ❌ | 缺失 | 可生成 jmx 但无法调用 `jmeter -n -t` |
+| | Playwright 执行 | ✅ | 完整 | run-playwright 调用 `playwright test` + 解析结果 |
+| | JMeter 执行 | ✅ | 完整 | run-jmeter 调用 `jmeter -n -t` + 解析 jtl（P50/P95/P99/错误率） |
 | **审计** | 测试代码规范审计 | ✅ | 完整 | T1-T12 确定性扫描器（Playwright/JMeter/用例） |
-| | 测试脚本质量检查 | ✅ | 完整 | T6-T9 JMeter 4 项 + 完整 11 条 XML 规则覆盖 |
-| | 用例覆盖率校验 | ❌ | 缺失 | 无"功能点→用例"映射校验 |
-| **修复** | 测试代码自动修复 | ✅ | 完整 | F1-F3（v-deep/beforeEach/waitForTimeout） |
-| | 脚本反模式修复 | ✅ | 完整 | T2 硬编码检测 + T12 硬等待替换 |
-| **质量门** | DI 缺陷指数卡门 | ✅ | 完整 | quality-gate.js CI 集成（但第 4 指标未实现） |
-| | 冒烟通过率卡门 | ❌ | 缺失 | 转测门槛 95% 无执行器 |
-| | 测试覆盖率卡门 | ❌ | 缺失 | 无覆盖率红线 |
+| | 测试脚本质量检查 | ✅ | 完整 | T6-T18 覆盖 JMeter 全 11 条 XML 强制规则 |
+| | 用例覆盖率校验 | ✅ | 完整 | T19（数量 < 10 条/功能点）+ T20（异常场景缺失） |
+| **修复** | 测试代码自动修复 | ✅ | 完整 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码URL/afterEach/测试名） |
+| | 脚本反模式修复 | ✅ | 完整 | T2 硬编码检测 + T12 硬等待替换 + F4-F6 |
+| **质量门** | DI 缺陷指数卡门 | ✅ | 完整 | quality-gate.js 4 指标全部实现 + CI 集成 |
+| | 冒烟通过率卡门 | ✅ | 完整 | quality-gate --smoke-result 支持 |
+| | 测试覆盖率卡门 | ✅ | 完整 | audit T19/T20 + quality-gate --audit-dir |
+| | 测试代码审计卡门 | ✅ | 完整 | quality-gate --audit-dir CI 阻断 |
 | **报告** | 质量报告生成 | ✅ | 完整 | DI 报告 + 质量报告模板 |
 | | 测试报告生成 | ⚠️ | 部分 | 模板存在，无从执行结果自动生成 |
 | **工程** | 自检/体检 | ✅ | 完整 | doctor 命令 |
@@ -287,12 +294,18 @@ wl-skills-test/
 
 | # | 缺失能力 | 影响程度 | 优先级 | 说明 |
 |---|---------|:--------:|:------:|------|
-| ~~1~~ | ~~测试代码审计引擎~~ | ~~🔴 致命~~ | ~~P0~~ | ✅ v0.4.0 已实现 T1-T12 |
-| ~~2~~ | ~~测试代码自动修复~~ | ~~🔴 致命~~ | ~~P0~~ | ✅ v0.4.0 已实现 F1-F3 |
-| ~~3~~ | ~~API 接口测试执行~~ | ~~🟡 高~~ | ~~P1~~ | ✅ v0.4.0 已实现 run-api |
-| 4 | 质量门第 4 指标 | 🟢 中 | P2 | 最差模块缺陷收敛 ≤20% 未实现 |
-| 5 | Playwright/JMeter 执行 | 🟢 中 | P2 | 可生成脚本但无法调用执行 |
-| 6 | 用例覆盖率校验 | 🟢 中 | P2 | 无"功能点→用例"映射 |
+| ~~1~~ | ~~测试代码审计引擎~~ | ~~🔴 致命~~ | ~~P0~~ | ✅ v0.4.0 T1-T12 |
+| ~~2~~ | ~~测试代码自动修复~~ | ~~🔴 致命~~ | ~~P0~~ | ✅ v0.4.0 F1-F3 |
+| ~~3~~ | ~~API 接口测试执行~~ | ~~🟡 高~~ | ~~P1~~ | ✅ v0.4.0 run-api |
+| ~~4~~ | ~~质量门第 4 指标~~ | ~~🟢 中~~ | ~~P2~~ | ✅ v0.5.0 模块收敛 ≤20% |
+| ~~5~~ | ~~Playwright 执行~~ | ~~🟢 中~~ | ~~P2~~ | ✅ v0.5.0 run-playwright |
+| ~~6~~ | ~~JMeter 执行~~ | ~~🟢 中~~ | ~~P2~~ | ✅ v0.5.0 run-jmeter |
+| ~~7~~ | ~~用例覆盖率校验~~ | ~~🟢 中~~ | ~~P2~~ | ✅ v0.5.0 T19/T20 |
+| ~~8~~ | ~~JMeter 全规则校验~~ | ~~🟢 中~~ | ~~P2~~ | ✅ v0.5.0 T13-T18 |
+| ~~9~~ | ~~自动修复 F4-F6~~ | ~~🟢 中~~ | ~~P2~~ | ✅ v0.5.0 硬编码/afterEach/测试名 |
+| ~~10~~ | ~~审计接入 CI 卡门~~ | ~~🟡 高~~ | ~~P1~~ | ✅ v0.5.0 quality-gate --audit-dir |
+
+> **全部缺口已清零**。v0.5.0 实现了完整的工程能力闭环：规范审计（T1-T20）→ 自动修复（F1-F6）→ 执行（API/Playwright/JMeter）→ 质量门（4 指标 + 审计卡门）→ 报告。
 
 ---
 
@@ -327,7 +340,8 @@ wl-skills-test/
 | v0.3.0 | 自动化生成（Playwright+JMeter）+ 编辑器适配 |
 | v0.3.1 | P0/P1 审计修复（MCP stdio + bd/page-spec 矩阵 + route-evals） |
 | v0.3.2 | arg parser 强化 + 版本占位符 + npm 发布 |
-| **v0.4.0** | **审计引擎 T1-T12 + 自动修复 F1-F3 + API 执行器 + 能力矩阵** |
+| v0.4.0 | 审计引擎 T1-T12 + 自动修复 F1-F3 + API 执行器 |
+| **v0.5.0** | **全部缺口清零：T1-T20 + F1-F6 + Playwright/JMeter 执行 + 质量门 4 指标 + 覆盖率校验** |
 
 ---
 

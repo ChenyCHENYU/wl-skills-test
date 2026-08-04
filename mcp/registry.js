@@ -132,6 +132,28 @@ export const TOOL_DESCRIPTORS = [
       required: ["contractPath"],
     },
   },
+  {
+    name: "wls_test_run_playwright",
+    description: "执行 Playwright 自动化测试（调用系统已安装的 playwright test）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        testDir: { type: "string", description: "测试目录" },
+      },
+    },
+  },
+  {
+    name: "wls_test_run_jmeter",
+    description: "执行 JMeter 性能测试（调用系统已安装的 jmeter -n -t）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        jmxPath: { type: "string", description: "jmx 文件路径" },
+        threads: { type: "number", description: "并发线程数" },
+      },
+      required: ["jmxPath"],
+    },
+  },
 ];
 
 export function getToolCount() {

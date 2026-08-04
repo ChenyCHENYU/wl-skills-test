@@ -9,6 +9,7 @@ import { consumeContract, generateTestCaseMatrix } from "../../lib/contract-cons
 import { generateSmokeSuite, calculateDI, exportCasesMarkdown } from "../../lib/test-codegen.js";
 import { audit, autoFix } from "../../lib/test-audit.js";
 import { runApiTests, generateSmokeReport } from "../../lib/api-executor.js";
+import { runPlaywright, runJmeter } from "../../lib/executors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -228,6 +229,16 @@ export async function handleRunApi(args) {
   return result;
 }
 
+// ── wls_test_run_playwright ────────────────────
+export function handleRunPlaywright(args) {
+  return runPlaywright({ testDir: args.testDir || "./tests" });
+}
+
+// ── wls_test_run_jmeter ────────────────────────
+export function handleRunJmeter(args) {
+  return runJmeter({ jmxPath: args.jmxPath, threads: args.threads || 100 });
+}
+
 export const HANDLERS = {
   wls_test_standards: handleStandards,
   wls_test_contract_read: handleContractRead,
@@ -239,4 +250,6 @@ export const HANDLERS = {
   wls_test_audit: handleAudit,
   wls_test_fix: handleFix,
   wls_test_run_api: handleRunApi,
+  wls_test_run_playwright: handleRunPlaywright,
+  wls_test_run_jmeter: handleRunJmeter,
 };
