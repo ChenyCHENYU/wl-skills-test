@@ -1,146 +1,260 @@
 # @agile-team/wl-skills-test
 
-> 测试工程 AI 技能包 — 11 条测试规范 · 12 个 AI Skill · MCP 契约驱动 · Playwright + JMeter
+<p align="center">
+  <strong>测试工程 AI 技能包</strong><br>
+  11 条测试规范 · 12 个 AI Skill · 7 个 MCP 工具 · 契约驱动用例生成
+</p>
 
-[![Status](https://img.shields.io/badge/status-v0.3.0-blue.svg)]()
-[![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)]()
-[![Standards](https://img.shields.io/badge/standards-11-orange.svg)]()
-[![Skills](https://img.shields.io/badge/skills-12-purple.svg)]()
-
-与 `wl-skills-design`（产品设计）、`wl-skills-kit`（前端）、`wl-skills-ui`（样式）、`wl-skills-bd`（后端）协作，形成**设计 → 开发 → 测试**的完整工程闭环。
-
----
-
-## 这是什么
-
-一套可安装的测试工程技能包，把测试团队沉淀的流程规范、用例设计方法、自动化脚本生成、性能测试和质量门禁，注入到 AI 编辑器（Copilot / Cursor / Windsurf / Claude Code / Kiro / Trae / Qoder / 通用 Agents），让 AI **真正理解项目测试规范**，从需求文档 → 测试方案 → 用例 → 自动化脚本 → 质量评估全流程辅助。
-
-### 五包协作
-
-```
-design(产品设计) → kit(前端代码) → ui(视觉对齐) → bd(后端代码) → test(测试验证)
-     ↓                ↓                               ↓              ↑
-  需求文档      page-spec/api.md              wl-contract.json   消费上游契约
-                                                   +                 → 生成用例
-                                             ServiceTest.java         → 自动化脚本
-                                                                      → 质量评估
-```
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.3.2-blue.svg" />
+  <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
+  <img src="https://img.shields.io/badge/standards-11-orange.svg" />
+  <img src="https://img.shields.io/badge/skills-12-purple.svg" />
+  <img src="https://img.shields.io/badge/MCP-7-teal.svg" />
+  <img src="https://img.shields.io/badge/tests-35%20pass-brightgreen.svg" />
+</p>
 
 ---
 
-## 快速开始
+## 🎯 这是什么
+
+把测试团队沉淀的**流程规范、用例设计方法、自动化脚本生成、性能测试和质量门禁**，注入到 AI 编辑器（Copilot / Cursor / Windsurf / Claude Code / Kiro / Trae / Qoder / 通用 Agents），让 AI 从需求文档 → 测试方案 → 用例 → 自动化脚本 → 质量评估**全流程辅助**。
+
+### 🔄 五包闭环
+
+```
+design ──→ kit ──→ ui ──→ bd ──→ test
+产品设计   前端    样式    后端    测试验证
+  │         │               │       ↑
+需求文档  page-spec     contract  消费上游契约
+         api.md                   → 生成用例
+                                  → 自动化脚本
+                                  → 质量评估
+```
+
+> **独立可用**：不依赖其他包也能从需求文档独立工作。联动只是增强（从契约自动生成用例），不是前置条件。
+
+---
+
+## 📦 安装
 
 ```bash
-# 安装测试技能体系（在项目根目录执行）
+# 全量安装到当前项目（11 规范 + 12 Skill + 模板 + 9 编辑器配置）
 npx @agile-team/wl-skills-test
 
-# 预览将写入哪些文件（不实际写入）
+# 预览将写入哪些文件
 npx @agile-team/wl-skills-test --dry-run
 
 # 增量更新
-npx @agile-team/wl-skills-test@latest update
+npx @agile-team/wl-skills-test update
 
 # 环境体检
 npx @agile-team/wl-skills-test doctor
 ```
 
----
-
-## 核心能力
-
-| 维度 | 现状 |
-|---|---|
-| 版本 | v0.3.0 |
-| 测试规范 | 11 条（01-流程 ~ 11-数据安全），对齐在线 QC 流程规范 |
-| AI Skill | 12 个（plan 2 / case 3 / exec 3 / quality 1 / perf 3） |
-| MCP 工具 | 7 个（wls_test_* 前缀，全部实现并有测试覆盖） |
-| 契约消费 | 支持 kit wl-api-contract / bd wl-contract.json / page-spec 三种格式 |
-| 自动化生成 | Playwright（从 page-spec/契约）+ JMeter jmx（从契约 operations） |
-| 质量门禁 | DI 缺陷指数 + 上线判定 4 指标 + CI 集成脚本 |
-| 测试覆盖 | 33 个单元测试（plan-hash/write-guard/DI/smoke/contract/MCP/Playwright/JMeter） |
-| 编辑器适配 | Copilot / Cursor / Windsurf / Claude / Kiro / Trae / Cline / AGENTS / Qoder |
+安装后，AI 编辑器自动识别 `.github/skills/` 下的 12 个 Skill 和 `.github/standards/` 下的 11 条规范。
 
 ---
 
-## 12 个 Skill 流水线
+## 🧪 12 个 AI Skill
 
 ### 功能测试链（9 个）
 
-```
-需求文档 ──→ ① test-plan-generator     测试方案（7 章标准化）
-         ──→ ② test-scenario-analyzer   业务场景（10 类全覆盖）
-              ↓
-         ──→ ③ test-case-generator      功能+流程用例（P0~P3）
-              ↓
-         ──→ ④ test-case-reviewer       5 维评审（重读需求）
-              ↓
-         ──→ ⑤ smoke-test-selector      冒烟套件（≤8/15/25）
-              ↓
-         ──→ ⑥ smoke-test-executor      冒烟执行+报告
-         ──→ ⑦ test-script-generator    Playwright 脚本
-              ↓
-         ──→ ⑧ universal-test-rules     自动化规则基座
-              ↓
-         ──→ ⑨ test-quality-analyzer    DI 质量评估+上线判定
-```
+| 步骤 | Skill | 触发词 | 产出 |
+|:----:|-------|--------|------|
+| ① | **test-plan-generator** | 生成测试方案 | 测试方案.md（7 章标准化） |
+| ② | **test-scenario-analyzer** | 分析业务场景 | 业务场景清单（10 类全覆盖） |
+| ③ | **test-case-generator** | 生成测试用例 | 功能+流程用例（P0~P3） |
+| ④ | **test-case-reviewer** | 评审测试用例 | 5 维评审报告 |
+| ⑤ | **smoke-test-selector** | 筛选冒烟用例 | 冒烟套件（≤8/15/25） |
+| ⑥ | **smoke-test-executor** | 执行冒烟测试 | 冒烟执行报告 |
+| ⑦ | **test-script-generator** | Playwright 脚本 | .spec.js + auth.json |
+| ⑧ | **universal-test-rules** | 自动化规则 | 通用测试规范基座 |
+| ⑨ | **test-quality-analyzer** | 质量评估 / DI 分析 | 质量报告（DI 指数 + 上线判定） |
 
 ### 性能测试链（3 个）
 
+| 步骤 | Skill | 触发词 | 产出 |
+|:----:|-------|--------|------|
+| ⑩ | **perf-plan-generator** | 性能测试方案 | 性能方案（三场景+SLA） |
+| ⑪ | **perf-script-generator** | JMeter 脚本 | .jmx + CSV + .bat |
+| ⑫ | **perf-report-analyzer** | 分析性能报告 | 性能报告（瓶颈诊断） |
+
 ```
-API 文档 ──→ ⑩ perf-plan-generator      性能方案（三场景+SLA）
-         ──→ ⑪ perf-script-generator    JMeter jmx 脚本
-         ──→ ⑫ perf-report-analyzer     jtl 分析+瓶颈诊断
+需求文档 ──→ ①方案 ──→ ②场景 ──→ ③用例 ──→ ④评审
+                                              ↓
+                                    ⑤冒烟套件 ──→ ⑥冒烟执行
+                                              ↓
+                                    ⑦Playwright ──→ ⑧规则基座
+                                              ↓
+                                    ⑨DI 质量评估 ──→ 上线判定
+
+API 文档 ──→ ⑩性能方案 ──→ ⑪JMeter 脚本 ──→ ⑫性能报告
 ```
 
 ---
 
-## 11 条测试规范
+## 📋 11 条测试规范
 
-| # | 规范 | 说明 |
+| # | 规范 | 核心约束 |
+|---|------|---------|
+| 01 | 测试流程 | 需求评审→测试点→工作量→用例→评审→冒烟→执行→封版→上线 |
+| 02 | 用例设计 | P0~P3 四级，1天50条，每功能点≥10条 |
+| 03 | 设计方法 | 场景法/边界值/等价类/错误推测/状态迁移 |
+| 04 | 测试策略 | 功能+系统+探索性，5 维度（功能/界面/权限/数据/兼容） |
+| 05 | 冒烟测试 | 转测门槛 95%，套件 ≤8/15/25 |
+| 06 | 自动化 | Playwright + Element Plus，两阶段（数据闭环+全按钮覆盖） |
+| 07 | 性能测试 | JMeter 5.6.3，三场景，P99<500ms，11 条 XML 强制规则 |
+| 08 | 质量门禁 | DI=致命×10+严重×3+一般×1+轻微×0.1，密度<0.3 |
+| 09 | 缺陷管理 | 录入规范、分级、回归规则 |
+| 10 | 测试报告 | 报告模板、上线验证 ≤1.5h |
+| 11 | 数据安全 | 脱敏、不碰生产、AT_ 前缀 |
+
+---
+
+## 🔌 契约驱动（run-gen）
+
+从 kit/bd 的机器契约**自动生成**测试资产：
+
+```bash
+# 生成测试用例（支持三种契约格式）
+npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json
+
+# 生成 Playwright 脚本
+npx @agile-team/wl-skills-test run-gen --contract ./page-spec.json --type playwright
+
+# 生成 JMeter jmx（200 并发）
+npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --type jmeter --threads 200
+```
+
+| 契约来源 | 格式 | 自动生成 |
+|---------|------|---------|
+| kit | `wl-api-contract.json` | CRUD 用例矩阵 + 权限 + 必填校验 |
+| bd | `wl-contract.json` | 5 标准操作 + customOperations + 必填 |
+| kit | `page-spec.json` | 页面 CRUD 推断 + Playwright 选择器 |
+
+---
+
+## 🔧 7 个 MCP 工具
+
+| 工具 | 用途 |
+|------|------|
+| `wls_test_standards` | 查询测试规范（按编号或名称） |
+| `wls_test_contract_read` | 读取 kit/bd 契约，提取可测试资源 |
+| `wls_test_case_generate` | 按契约+需求生成测试用例 |
+| `wls_test_smoke_select` | 从全量用例筛选冒烟套件 |
+| `wls_test_env_check` | 校验测试环境连通性 |
+| `wls_test_quality_analyze` | DI 缺陷指数质量评估 + 上线判定 |
+| `wls_test_jmeter_validate` | 校验 JMeter jmx 有效性 |
+
+MCP server 通过 stdio 运行（零依赖 JSON-RPC）：
+
+```bash
+# 直接启动 MCP server
+node node_modules/@agile-team/wl-skills-test/mcp/index.js
+
+# 或通过 CLI
+npx @agile-team/wl-skills-test --mcp
+```
+
+---
+
+## 🎖️ DI 质量门（CI 集成）
+
+```bash
+# CI 中运行质量门（退出码 0=通过 / 1=阻断）
+node node_modules/@agile-team/wl-skills-test/scripts/quality-gate.js \
+  --defects defects.json --cases 150
+```
+
+上线判定 4 指标：
+
+| # | 指标 | 阈值 |
 |---|------|------|
-| 01 | 测试流程规范 | 需求评审→工作量评估→用例编制→评审→冒烟转测→执行→封版→上线→用户手册 |
-| 02 | 用例设计标准 | 场景描述法、P0~P3 四级、数量与工作量匹配（1天50条） |
-| 03 | 用例设计方法 | 场景法/边界值/等价类/错误推测/状态迁移 |
-| 04 | 测试策略设计 | 功能+系统+探索性测试，迭代增量模型 |
-| 05 | 冒烟测试规范 | 转测门槛（95%通过）、套件规模（≤8/15/25）、自测清单 |
-| 06 | 自动化测试规范 | Playwright + Element Plus 模式、数据闭环、全按钮覆盖 |
-| 07 | 性能测试规范 | JMeter 5.6.3、三场景（日常/峰值/疲劳）、SLA 阈值 |
-| 08 | 质量门禁 | DI 公式、DI 密度、上线判定 4 指标、4 级预警 |
-| 09 | 缺陷管理 | bug 录入规范、严重程度分级、回归测试规则 |
-| 10 | 测试报告 | 测试报告模板、上线验证点、线上验证流程 |
-| 11 | 测试数据安全 | 脱敏规范、不碰生产、测试数据清理 |
+| 1 | DI 密度 | < 0.3 |
+| 2 | 致命缺陷关闭率 | 100% |
+| 3 | 严重缺陷关闭率 | 100% |
+| 4 | 最差模块缺陷收敛 | ≤20% |
 
 ---
 
-## 与 wl-skills 生态的协作
+## 📁 包结构
 
-| 连接点 | 数据流向 | 实现阶段 |
-|--------|---------|---------|
-| design 需求文档 → test | 测试方案/场景分析输入源 | 第一阶段 |
-| kit page-spec → test | 功能用例（页面维度） | 第二阶段 |
-| kit api.md → test | 接口测试用例 + 断言期望 | 第二阶段 |
-| bd wl-contract.json → test | 接口用例矩阵 + 行为测试 | 第二阶段 |
-| bd permissions → test | 权限矩阵测试用例 | 第二阶段 |
-| bd ServiceTest → test | 质量评估复用 | 第二阶段 |
+```
+wl-skills-test/
+├── bin/wl-skills-test.js          # CLI 入口（init/doctor/validate/run-gen/clean/--mcp）
+├── lib/
+│   ├── index.js                   # 命令路由 + 参数解析
+│   ├── contract-consumer.js       # 契约消费（kit/bd/page-spec 三格式）
+│   ├── test-codegen.js            # 用例生成 + DI + 冒烟 + Markdown
+│   ├── playwright-generator.js    # Playwright 脚本生成
+│   ├── jmeter-generator.js        # JMeter jmx 生成
+│   ├── write-guard.js             # 安全写链（哈希确认 + 回滚）
+│   ├── plan-hash.js               # 计划哈希
+│   └── templates/                 # 输出模板（5 个）
+├── mcp/
+│   ├── index.js                   # stdio MCP server（零依赖 JSON-RPC）
+│   ├── server.js                  # MCP server 工厂
+│   ├── registry.js                # 7 个工具注册表
+│   └── tools/handlers.js          # 7 个工具实现
+├── scripts/
+│   └── quality-gate.js            # DI 质量门 CI 脚本
+├── files/                         # 安装到用户项目的内容
+│   ├── .github/standards/         # 11 条规范
+│   ├── .github/skills/            # 12 个 Skill（5 组）
+│   ├── .mcp.json                  # MCP 配置
+│   └── 9 个编辑器适配文件
+├── docs/                          # 架构设计 + 分析文档
+└── test/                          # 35 个单元测试
+```
 
 ---
 
-## 技术栈
+## 📊 能力总览
+
+| 维度 | 数量 | 说明 |
+|------|:----:|------|
+| 测试规范 | 11 | 对齐在线 QC 流程规范 |
+| AI Skill | 12 | 功能链 9 + 性能链 3 |
+| MCP 工具 | 7 | wls_test_* 前缀，全部实现并有测试 |
+| 契约格式 | 3 | wl-api-contract / wl-contract / page-spec |
+| 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
+| 单元测试 | 35 | 全部通过 |
+| 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
+
+---
+
+## 🛠️ 技术栈
 
 | 类别 | 基线 |
 |------|------|
 | 前端自动化 | Playwright + TypeScript |
 | UI 框架 | Element Plus + Vue 3（脚本生成目标） |
 | 性能测试 | JMeter 5.6.3 + ServerAgent |
-| 平台 | Java 8 / Spring Boot 2 / jh4j-cloud 3（后端测试目标） |
+| 后端测试目标 | Java 8 / Spring Boot 2 / jh4j-cloud 3 |
 | Node.js | >= 20 |
+| 依赖 | 零运行时依赖（纯 Node 内置模块） |
 
 ---
 
-## 文档
+## 📖 文档
 
 - [架构设计](./docs/architecture.md) — 包结构、五包协作、技能流水线
-- [分析文档](./docs/analysis.md) — testing-skills-0723 分析与迁移决策
+- [分析文档](./docs/analysis.md) — testing-skills-0723 迁移决策
+- [CHANGELOG](./CHANGELOG.md) — 版本变更记录
+
+---
+
+## 📝 版本历程
+
+| 版本 | 核心 |
+|------|------|
+| v0.1.0 | 工程骨架 + 11 规范 + 12 技能迁移 |
+| v0.2.0 | 契约消费 + MCP 骨架 + 质量门 CI |
+| v0.2.1 | ESM 修复（全命令可用）+ 回滚实现 |
+| v0.3.0 | 自动化生成（Playwright+JMeter）+ 编辑器适配 |
+| v0.3.1 | P0/P1 审计修复（MCP stdio + bd/page-spec 矩阵 + route-evals） |
+| **v0.3.2** | **arg parser 强化 + 版本占位符 + npm 发布就绪** |
 
 ---
 

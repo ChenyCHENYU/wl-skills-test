@@ -1,6 +1,6 @@
 # AI 测试技能主入口
 
-本项目已安装 `@agile-team/wl-skills-test` 测试工程技能包。
+本项目已安装 `@agile-team/wl-skills-test`（v__WL_SKILLS_TEST_VERSION__）测试工程技能包。
 
 ## 快速触发
 

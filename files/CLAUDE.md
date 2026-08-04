@@ -2,7 +2,7 @@
 
 ## 项目上下文
 
-本项目已安装 `@agile-team/wl-skills-test`（v0.3.0）测试工程技能包。
+本项目已安装 `@agile-team/wl-skills-test`（v__WL_SKILLS_TEST_VERSION__）测试工程技能包。
 
 ## 能力
 
