@@ -8,7 +8,35 @@
 
 ---
 
-## [0.2.1] — 2026-08-05（ESM 兼容性修复 + 全命令可用）
+## [0.3.0] — 2026-08-05（自动化生成 + MCP 完善 + 编辑器适配）
+
+### Added — 自动化脚本生成
+
+- `lib/playwright-generator.js`：从 page-spec 或契约自动生成 Playwright 测试脚本（含查询选择器、新增数据闭环、操作列测试）。
+- `lib/jmeter-generator.js`：从契约 operations 自动生成 JMeter jmx 脚本（含线程组/采样器/Header/JSON 断言/聚合报告/结果树），遵循 11 条强制规则避免致命坑。
+- CLI `run-gen --type playwright`：一键从契约生成 Playwright 脚本。
+- CLI `run-gen --type jmeter`：一键从契约生成 JMeter jmx（支持 `--threads` 参数）。
+
+### Added — MCP 与编辑器适配
+
+- `files/.mcp.json`：安装后自动注册 MCP server。
+- 新增 6 个编辑器适配文件：CLAUDE.md / .cursor / .windsurf / .kiro / .trae / .clinerules。
+
+### Added — 测试覆盖增强
+
+- 新增 18 个测试（MCP handler 14 个 + Playwright 生成器 2 个 + JMeter 生成器 3 个，含生成器产物通过 jmeter_validate 闭环验证）。
+- 总计 33 个测试全部通过。
+
+### Verification
+
+- `node --test test/*.test.js` → 33 pass / 0 fail。
+- `run-gen --contract X --type playwright` → 实测生成含选择器和数据闭环。
+- `run-gen --contract X --type jmeter --threads 200` → 实测生成有效 jmx（通过 jmeter_validate 校验）。
+- 生成的 jmx 不含 ConfigTestElement 致命坑，能通过 wls_test_jmeter_validate。
+
+---
+
+## [0.2.1] — 2026-08-05（ESM 兼容性修复）
 
 ### Fixed
 

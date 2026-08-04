@@ -1,0 +1,18 @@
+@agile-team/wl-skills-test
+
+测试工程 AI 技能包。安装后 AI 编辑器自动识别 `.github/skills/` 下的 12 个测试 Skill 和 `.github/standards/` 下的 11 条规范。
+
+## 触发词
+- 生成测试方案 → test-plan-generator
+- 分析业务场景 → test-scenario-analyzer
+- 生成测试用例 → test-case-generator
+- 用例评审 → test-case-reviewer
+- 冒烟用例 → smoke-test-selector
+- 质量评估 → test-quality-analyzer
+- 性能测试方案 → perf-plan-generator
+- JMeter 脚本 → perf-script-generator
+
+## CLI
+```bash
+npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json
+```

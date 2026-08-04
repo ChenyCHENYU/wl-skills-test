@@ -2,7 +2,7 @@
 
 > 测试工程 AI 技能包 — 11 条测试规范 · 12 个 AI Skill · MCP 契约驱动 · Playwright + JMeter
 
-[![Status](https://img.shields.io/badge/status-v0.2.0-blue.svg)]()
+[![Status](https://img.shields.io/badge/status-v0.3.0-blue.svg)]()
 [![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)]()
 [![Standards](https://img.shields.io/badge/standards-11-orange.svg)]()
 [![Skills](https://img.shields.io/badge/skills-12-purple.svg)]()
@@ -50,14 +50,15 @@ npx @agile-team/wl-skills-test doctor
 
 | 维度 | 现状 |
 |---|---|
-| 版本 | v0.2.0 |
+| 版本 | v0.3.0 |
 | 测试规范 | 11 条（01-流程 ~ 11-数据安全），对齐在线 QC 流程规范 |
 | AI Skill | 12 个（plan 2 / case 3 / exec 3 / quality 1 / perf 3） |
-| MCP 工具 | 7 个（wls_test_* 前缀，已实现） |
+| MCP 工具 | 7 个（wls_test_* 前缀，全部实现并有测试覆盖） |
 | 契约消费 | 支持 kit wl-api-contract / bd wl-contract.json / page-spec 三种格式 |
-| 自动化 | Playwright（前端） + JMeter 5.6.3（性能） |
+| 自动化生成 | Playwright（从 page-spec/契约）+ JMeter jmx（从契约 operations） |
 | 质量门禁 | DI 缺陷指数 + 上线判定 4 指标 + CI 集成脚本 |
-| 测试覆盖 | 10 个单元测试（plan-hash/write-guard/DI/smoke/export） |
+| 测试覆盖 | 33 个单元测试（plan-hash/write-guard/DI/smoke/contract/MCP/Playwright/JMeter） |
+| 编辑器适配 | Copilot / Cursor / Windsurf / Claude / Kiro / Trae / Cline / AGENTS / Qoder |
 
 ---
 
