@@ -97,6 +97,41 @@ export const TOOL_DESCRIPTORS = [
       required: ["jmxPath"],
     },
   },
+  {
+    name: "wls_test_audit",
+    description: "审计测试代码（T1-T12 确定性规则扫描，支持 Playwright/JMeter/用例文档）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target: { type: "string", description: "审计目标（文件或目录）" },
+      },
+      required: ["target"],
+    },
+  },
+  {
+    name: "wls_test_fix",
+    description: "自动修复测试代码反模式（F1-F3：v-deep/beforeEach/waitForTimeout）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target: { type: "string", description: "修复目标（文件或目录）" },
+      },
+      required: ["target"],
+    },
+  },
+  {
+    name: "wls_test_run_api",
+    description: "执行 API 接口测试（从契约自动发起 HTTP 请求验证可用性，零依赖）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contractPath: { type: "string", description: "契约文件路径" },
+        baseUrl: { type: "string", description: "目标服务地址" },
+        token: { type: "string", description: "认证 token（可选）" },
+      },
+      required: ["contractPath"],
+    },
+  },
 ];
 
 export function getToolCount() {

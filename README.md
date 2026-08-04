@@ -6,12 +6,13 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.2-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.4.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-12-purple.svg" />
-  <img src="https://img.shields.io/badge/MCP-7-teal.svg" />
-  <img src="https://img.shields.io/badge/tests-35%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/MCP-10-teal.svg" />
+  <img src="https://img.shields.io/badge/audit-T1--T12-red.svg" />
+  <img src="https://img.shields.io/badge/tests-42%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -50,6 +51,15 @@ npx @agile-team/wl-skills-test update
 
 # 环境体检
 npx @agile-team/wl-skills-test doctor
+
+# 审计测试代码（T1-T12 确定性规则）
+npx @agile-team/wl-skills-test audit --target ./tests/
+
+# 自动修复测试代码反模式
+npx @agile-team/wl-skills-test fix --target ./tests/
+
+# 执行 API 接口测试（从契约自动发请求）
+npx @agile-team/wl-skills-test run-api --contract ./wl-contract.json --base-url http://localhost:8080
 ```
 
 安装后，AI 编辑器自动识别 `.github/skills/` 下的 12 个 Skill 和 `.github/standards/` 下的 11 条规范。
@@ -216,11 +226,73 @@ wl-skills-test/
 |------|:----:|------|
 | 测试规范 | 11 | 对齐在线 QC 流程规范 |
 | AI Skill | 12 | 功能链 9 + 性能链 3 |
-| MCP 工具 | 7 | wls_test_* 前缀，全部实现并有测试 |
+| MCP 工具 | 10 | wls_test_* 前缀，全部实现并有测试 |
+| 审计规则 | 12 | T1-T12 确定性扫描器（Playwright/JMeter/用例） |
+| 自动修复 | 3 | F1-F3（v-deep/beforeEach/waitForTimeout） |
+| API 执行 | 1 | run-api 零依赖 HTTP 请求验证 + 冒烟报告 |
 | 契约格式 | 3 | wl-api-contract / wl-contract / page-spec |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元测试 | 35 | 全部通过 |
+| 单元测试 | 42 | 全部通过 |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
+
+---
+
+## 📐 工程能力闭环矩阵
+
+> 对标 kit（R1-R16 审计 + safe-fix + validate 卡门）、bd（B1-B29 审计 + safe-fix + J1-J8 质量门）、ui（R001-R039 扫描 + fix + check 卡门）三包的成熟模式。
+
+### 测试全生命周期能力覆盖
+
+| 阶段 | 能力 | 状态 | 覆盖程度 | 说明 |
+|:----:|------|:----:|:--------:|------|
+| **规划** | 测试方案生成 | ✅ | 完整 | test-plan-generator + 7 章模板 |
+| | 业务场景分析 | ✅ | 完整 | test-scenario-analyzer，10 类场景 |
+| **设计** | 测试用例生成 | ✅ | 完整 | 契约驱动矩阵 + P0~P3 分级 + Skill |
+| | 用例评审 | ⚠️ | 部分 | test-case-reviewer Skill（AI 驱动），无确定性规则引擎 |
+| | 冒烟套件筛选 | ✅ | 完整 | 定量算法（≤8/15/25）+ Skill |
+| **执行** | 冒烟执行 | ⚠️ | 部分 | smoke-test-executor Skill + run-api 实际发 HTTP 请求 |
+| | Playwright 脚本生成 | ✅ | 完整 | 从 page-spec/契约生成选择器+数据闭环 |
+| | JMeter 脚本生成 | ✅ | 完整 | 从契约 operations 生成，遵循 11 条 XML 规则 |
+| | API 接口测试执行 | ✅ | 完整 | run-api 从契约自动发起 HTTP 请求验证 + 冒烟报告 |
+| | Playwright 执行 | ❌ | 缺失 | 可生成脚本但无法调用 `playwright test` |
+| | JMeter 执行 | ❌ | 缺失 | 可生成 jmx 但无法调用 `jmeter -n -t` |
+| **审计** | 测试代码规范审计 | ✅ | 完整 | T1-T12 确定性扫描器（Playwright/JMeter/用例） |
+| | 测试脚本质量检查 | ✅ | 完整 | T6-T9 JMeter 4 项 + 完整 11 条 XML 规则覆盖 |
+| | 用例覆盖率校验 | ❌ | 缺失 | 无"功能点→用例"映射校验 |
+| **修复** | 测试代码自动修复 | ✅ | 完整 | F1-F3（v-deep/beforeEach/waitForTimeout） |
+| | 脚本反模式修复 | ✅ | 完整 | T2 硬编码检测 + T12 硬等待替换 |
+| **质量门** | DI 缺陷指数卡门 | ✅ | 完整 | quality-gate.js CI 集成（但第 4 指标未实现） |
+| | 冒烟通过率卡门 | ❌ | 缺失 | 转测门槛 95% 无执行器 |
+| | 测试覆盖率卡门 | ❌ | 缺失 | 无覆盖率红线 |
+| **报告** | 质量报告生成 | ✅ | 完整 | DI 报告 + 质量报告模板 |
+| | 测试报告生成 | ⚠️ | 部分 | 模板存在，无从执行结果自动生成 |
+| **工程** | 自检/体检 | ✅ | 完整 | doctor 命令 |
+| | 文件校验 | ✅ | 完整 | validate 命令 |
+| | 安全写链 | ✅ | 完整 | write-guard + hash + 回滚 |
+| | 契约消费 | ✅ | 完整 | 3 格式自动检测 |
+| | 版本占位符 | ✅ | 完整 | init 动态替换 |
+
+### 与其他 wl-skills 包能力对标
+
+| 能力维度 | kit (前端) | bd (后端) | ui (样式) | **test (测试)** | 差距 |
+|---------|:----------:|:--------:|:--------:|:--------------:|:----:|
+| 规范审计引擎 | R1-R16 (AST) | B1-B29 | R001-R039 (39条) | **T1-T12** | ✅ 已补齐 |
+| 自动修复 | safe-fix (F1-F5) | code-fix-be (B3/B5) | fix (12条) | **F1-F3** | ✅ 已补齐 |
+| 质量门对象 | 源码本身 | 源码本身 | 源码本身 | **外部 DI + 内部审计** | ✅ 已增强 |
+| MCP 工具数 | 23 | 16 | 10 | **10** | 🟡 可继续扩展 |
+| 确定性 vs AI 驱动 | 确定性 | 确定性 | 确定性 | **确定性+AI** | ✅ 已补齐 |
+| 执行能力 | ❌ | ❌ | ❌ | **API 执行 ✅** | ✅ 领先 |
+
+### 核心差距与优先级
+
+| # | 缺失能力 | 影响程度 | 优先级 | 说明 |
+|---|---------|:--------:|:------:|------|
+| ~~1~~ | ~~测试代码审计引擎~~ | ~~🔴 致命~~ | ~~P0~~ | ✅ v0.4.0 已实现 T1-T12 |
+| ~~2~~ | ~~测试代码自动修复~~ | ~~🔴 致命~~ | ~~P0~~ | ✅ v0.4.0 已实现 F1-F3 |
+| ~~3~~ | ~~API 接口测试执行~~ | ~~🟡 高~~ | ~~P1~~ | ✅ v0.4.0 已实现 run-api |
+| 4 | 质量门第 4 指标 | 🟢 中 | P2 | 最差模块缺陷收敛 ≤20% 未实现 |
+| 5 | Playwright/JMeter 执行 | 🟢 中 | P2 | 可生成脚本但无法调用执行 |
+| 6 | 用例覆盖率校验 | 🟢 中 | P2 | 无"功能点→用例"映射 |
 
 ---
 
@@ -254,7 +326,8 @@ wl-skills-test/
 | v0.2.1 | ESM 修复（全命令可用）+ 回滚实现 |
 | v0.3.0 | 自动化生成（Playwright+JMeter）+ 编辑器适配 |
 | v0.3.1 | P0/P1 审计修复（MCP stdio + bd/page-spec 矩阵 + route-evals） |
-| **v0.3.2** | **arg parser 强化 + 版本占位符 + npm 发布就绪** |
+| v0.3.2 | arg parser 强化 + 版本占位符 + npm 发布 |
+| **v0.4.0** | **审计引擎 T1-T12 + 自动修复 F1-F3 + API 执行器 + 能力矩阵** |
 
 ---
 

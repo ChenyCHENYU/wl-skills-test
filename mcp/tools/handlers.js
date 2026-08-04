@@ -1,12 +1,14 @@
 /**
  * MCP 工具 Handler 实现
  */
-import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { readFileSync, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { join, resolve, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { consumeContract, generateTestCaseMatrix } from "../../lib/contract-consumer.js";
 import { generateSmokeSuite, calculateDI, exportCasesMarkdown } from "../../lib/test-codegen.js";
+import { audit, autoFix } from "../../lib/test-audit.js";
+import { runApiTests, generateSmokeReport } from "../../lib/api-executor.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -171,6 +173,61 @@ function checkCommand(cmd) {
   }
 }
 
+// ── wls_test_audit ─────────────────────────────
+export function handleAudit(args) {
+  const target = args.target || ".";
+  if (!existsSync(target)) return { error: "目标路径不存在" };
+  return audit(target);
+}
+
+// ── wls_test_fix ───────────────────────────────
+export function handleFix(args) {
+  const target = args.target || ".";
+  if (!existsSync(target)) return { error: "目标路径不存在" };
+
+  const stat = statSync(target);
+  const files = [];
+  if (stat.isDirectory()) {
+    const walk = (dir) => {
+      for (const e of readdirSync(dir)) {
+        const full = join(dir, e);
+        const s = statSync(full);
+        if (s.isDirectory() && !e.startsWith("node_modules") && !e.startsWith(".")) walk(full);
+        else if (s.isFile() && (e.endsWith(".js") || e.endsWith(".ts"))) files.push(full);
+      }
+    };
+    walk(target);
+  } else {
+    files.push(target);
+  }
+
+  let fixed = 0;
+  const details = [];
+  for (const file of files) {
+    const result = autoFix(file);
+    if (result.changed) {
+      writeFileSync(file, result.content, "utf-8");
+      fixed++;
+      details.push({ file, fixes: result.fixes });
+    }
+  }
+  return { fixed, total: files.length, details };
+}
+
+// ── wls_test_run_api ───────────────────────────
+export async function handleRunApi(args) {
+  const { contractPath, baseUrl, token } = args;
+  if (!contractPath || !existsSync(contractPath)) {
+    return { error: "需要 contractPath 参数" };
+  }
+  const result = await runApiTests({
+    contractPath,
+    baseUrl: baseUrl || "http://localhost:8080",
+    token,
+  });
+  return result;
+}
+
 export const HANDLERS = {
   wls_test_standards: handleStandards,
   wls_test_contract_read: handleContractRead,
@@ -179,4 +236,7 @@ export const HANDLERS = {
   wls_test_env_check: handleEnvCheck,
   wls_test_quality_analyze: handleQualityAnalyze,
   wls_test_jmeter_validate: handleJmeterValidate,
+  wls_test_audit: handleAudit,
+  wls_test_fix: handleFix,
+  wls_test_run_api: handleRunApi,
 };
