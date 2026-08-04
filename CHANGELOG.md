@@ -4,6 +4,28 @@
 
 ---
 
+## [Unreleased]
+
+---
+
+## [0.2.0] — 2026-08-04（生态连接 + 自动化执行）
+
+### 第二阶段：生态连接
+
+- `lib/contract-consumer.js`：消费 kit wl-api-contract / bd wl-contract.json / kit page-spec 三种契约，自动检测格式并提取可测试资源。
+- `lib/test-codegen.js`：用例生成引擎（契约→用例矩阵、DI 质量评估、冒烟筛选、Markdown 导出）。
+- `lib/write-guard.js` + `lib/plan-hash.js`：安全写链（preview→confirm→写前重算→失败回滚），生产环境默认阻断。
+- `mcp/tools/handlers.js`：7 个 MCP 工具完整实现。
+- CLI `run-gen`：一键从契约生成测试用例。
+
+### 第三阶段：自动化执行
+
+- `lib/templates/jmeter-base.jmx`：JMeter 5.6.3 基础脚本模板（补齐缺失 jmx）。
+- `scripts/quality-gate.js`：DI 质量门 CI 集成脚本（退出码 0/1 卡门）。
+- `test/index.test.js`：10 个单元测试全部通过。
+
+---
+
 ## [0.1.0] — 2026-08-04（工程骨架 + 知识资产迁移）
 
 ### Added

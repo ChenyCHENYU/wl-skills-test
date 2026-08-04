@@ -1,27 +1,43 @@
 /**
- * MCP Server 骨架 — 第二阶段实现完整 handler
+ * MCP Server — 7 个工具完整实现
  */
 import { TOOL_DESCRIPTORS, TOOL_PREFIX } from "./registry.js";
+import { HANDLERS } from "./tools/handlers.js";
 
 export function createServer() {
   return {
     name: `${TOOL_PREFIX}-server`,
-    version: "0.1.0",
+    version: "0.2.0",
 
     listTools() {
       return TOOL_DESCRIPTORS;
     },
 
     async callTool(name, args) {
-      console.log(`[MCP] ${name} called with:`, JSON.stringify(args).slice(0, 100));
-      return {
-        content: [
-          {
-            type: "text",
-            text: `工具 ${name} 在第二阶段实现。当前为骨架，规划 ${TOOL_DESCRIPTORS.length} 个工具。`,
-          },
-        ],
-      };
+      const handler = HANDLERS[name];
+      if (!handler) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: `未知工具: ${name}` }],
+        };
+      }
+
+      try {
+        const result = handler(args || {});
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (e) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: `工具执行失败: ${e.message}` }],
+        };
+      }
     },
   };
 }
