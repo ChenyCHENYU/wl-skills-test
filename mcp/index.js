@@ -5,14 +5,20 @@
  * 用法（.mcp.json 或手动）:
  *   node node_modules/@agile-team/wl-skills-test/mcp/index.js
  *
- * 无外部依赖，自实现 MCP 协议最小子集（initialize / tools/list / tools/call）。
+ * 无外部依赖，自实现 MCP 协议最小子集（initialize / ping / tools/list / tools/call）。
  */
 import { createInterface } from "node:readline";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { TOOL_DESCRIPTORS } from "./registry.js";
 import { HANDLERS } from "./tools/handlers.js";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+
 const PROTOCOL_VERSION = "2024-11-05";
-const SERVER_INFO = { name: "wl-skills-test", version: "0.3.1" };
+const SERVER_INFO = { name: "wl-skills-test", version: PKG.version };
 
 const rl = createInterface({ input: process.stdin });
 
@@ -47,6 +53,10 @@ rl.on("line", (line) => {
       // notification, no response
       break;
 
+    case "ping":
+      send({ jsonrpc: "2.0", id, result: {} });
+      break;
+
     case "tools/list":
       send({
         jsonrpc: "2.0",
@@ -68,22 +78,25 @@ rl.on("line", (line) => {
         });
         break;
       }
-      try {
-        const result = handler(args || {});
-        send({
-          jsonrpc: "2.0",
-          id,
-          result: {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-          },
+      // handler 可能是 async（如 wls_test_run_api），必须 await 后再序列化
+      Promise.resolve()
+        .then(() => handler(args || {}))
+        .then((result) => {
+          send({
+            jsonrpc: "2.0",
+            id,
+            result: {
+              content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            },
+          });
+        })
+        .catch((e) => {
+          send({
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32603, message: e.message },
+          });
         });
-      } catch (e) {
-        send({
-          jsonrpc: "2.0",
-          id,
-          error: { code: -32603, message: e.message },
-        });
-      }
       break;
     }
 

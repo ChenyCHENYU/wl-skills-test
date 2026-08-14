@@ -1,6 +1,6 @@
 # 架构设计 — wl-skills-test
 
-> 版本：v0.1.0 · 创建日期：2026-08-04 · 维护：AGILE TEAM
+> 版本：v0.6.0 · 创建日期：2026-08-04 · 维护：AGILE TEAM
 
 ---
 
@@ -12,7 +12,7 @@
 design(产品设计) → kit(前端代码) → ui(视觉对齐) → bd(后端代码) → test(测试验证)
 ```
 
-不重新发明测试方法论，而是把测试团队已有的流程规范（在线 QC 文档）和实战经验（testing-skills-0723 的 12 个技能）工程化为可安装、可校验、可与上游代码生成包协作的 AI 技能包。
+不重新发明测试方法论，而是把测试团队已有的流程规范（在线 QC 文档）、实战经验（testing-skills-0723 的 12 个技能）和工程级 e2e 模式（wl-ui-produce 炼钢平台的三轮策略/网络监控/清理账本）工程化为可安装、可校验、可与上游代码生成包协作的 AI 技能包。
 
 ---
 
@@ -163,17 +163,45 @@ API 文档
 
 ---
 
-## 五、MCP 工具规划（7 个，第二阶段实现）
+## 五、MCP 工具（13 个，全部实现）
 
-| 工具名 | 用途 | 状态 |
-|--------|------|:----:|
-| `wls_test_standards` | 查询测试规范 | 骨架 |
-| `wls_test_contract_read` | 读取 kit/bd 机器契约 | 骨架 |
-| `wls_test_case_generate` | 按契约+需求生成用例 | 骨架 |
-| `wls_test_smoke_select` | 筛选冒烟套件 | 骨架 |
-| `wls_test_env_check` | 校验测试环境连通性 | 骨架 |
-| `wls_test_quality_analyze` | DI 质量评估+上线判定 | 骨架 |
-| `wls_test_jmeter_validate` | 校验 JMeter jmx 有效性 | 骨架 |
+| 工具名 | 用途 |
+|--------|------|
+| `wls_test_standards` | 查询测试规范 |
+| `wls_test_contract_read` | 读取 kit/bd 机器契约 |
+| `wls_test_case_generate` | 按契约+需求生成用例 |
+| `wls_test_smoke_select` | 筛选冒烟套件 |
+| `wls_test_env_check` | 校验测试环境连通性（支持向上探测项目根） |
+| `wls_test_quality_analyze` | DI 质量评估+上线判定 |
+| `wls_test_jmeter_validate` | 校验 JMeter jmx 有效性 |
+| `wls_test_audit` | T1-T20 审计 |
+| `wls_test_fix` | F1-F6 修复（默认预览，confirm 写盘） |
+| `wls_test_run_api` | API 接口测试执行（异步，真实主键+零污染） |
+| `wls_test_run_playwright` | Playwright 执行 |
+| `wls_test_run_jmeter` | JMeter 执行 |
+| `wls_test_e2e_generate` | E2E 三轮策略脚手架生成（v0.6.0） |
+
+stdio 实现要点：async handler 必须 await 后序列化（v0.6.0 修复，round-trip 测试覆盖）；支持 `ping`；版本号读 package.json。
+
+---
+
+## 六、E2E 三轮策略（v0.6.0，源自 wl-ui-produce 实战）
+
+```
+ROUND1 只读冒烟          ROUND2 受控写入                CLEANUP 恢复清理
+打开页面                 三重门禁确认                    显式指定账本
+ ├ 登录态校验             ├ ENABLE_WRITE=1               ├ 加载账本（校验 runId/主键归属）
+ ├ 表格/空态断言          ├ WRITE_CONFIRM=确认串          └ 逆序清理 pending 记录
+ ├ 网络监控五硬门         └ 主机白名单
+ │  ├ 必须观察到业务响应   ├ 契约必填字段构造 payload
+ │  ├ HTTP≥400/业务码≠成功 ├ 新增返回真实主键
+ │  ├ console/pageerror   ├ queryPage 真实落库校验
+ │  ├ 只读检测写请求       ├ 账本登记（runId 业务键）
+ │  └ 登录页=失败          ├ finally 精确主键清理
+ └ 可写页面操作按钮可见     └ 清理后复查（零污染）
+```
+
+脚手架由 `lib/e2e-generator.js` 生成（`run-gen --type e2e` / MCP `wls_test_e2e_generate`），生成物通过自家 T1-T20 审计（`test/self-consistency.test.js` 回归保证）。方法论沉淀在 `files/.github/skills/exec/test-script-generator/references/e2e-rounds-pattern.md`。
 
 ---
 
@@ -219,8 +247,9 @@ API 文档
 |------|---------------------|----------------|
 | 形态 | 纯提示词文档 | 工程包（CLI+MCP+standards+模板） |
 | 平台 | Hermes 平台专用 | 平台无关，npx 即用 |
-| CLI | 无 | init/doctor/validate/run-gen/clean |
-| MCP | 无 | 7 个 wls_test_*（规划） |
+| CLI | 无 | init/update/doctor/validate/run-gen/audit/fix/run-api/run-playwright/run-jmeter/clean |
+| MCP | 无 | 13 个 wls_test_*（含 stdio round-trip 测试） |
 | 上游连接 | 无 | 消费 design/kit/bd 契约 |
+| e2e 工程化 | 无 | 三轮策略脚手架（源自 wl-ui-produce 实战） |
 | 缺陷 | 悬空引用/编号混乱/无校验 | 已修复 |
 | 知识资产 | 12 个 SKILL.md 原始版 | 迁移重构后保留全部核心内容 |

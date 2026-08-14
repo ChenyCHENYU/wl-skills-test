@@ -154,6 +154,19 @@ export const TOOL_DESCRIPTORS = [
       required: ["jmxPath"],
     },
   },
+  {
+    name: "wls_test_e2e_generate",
+    description: "生成成熟 E2E 工程脚手架（三轮策略：只读冒烟+受控写入+清理账本，含网络监控/写入门禁，源自 wl-ui-produce 实战沉淀）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contractPath: { type: "string", description: "page-spec.json 或契约文件路径" },
+        outputDir: { type: "string", description: "输出目录（默认 ./e2e）" },
+        baseUrl: { type: "string", description: "被测系统基址" },
+      },
+      required: ["contractPath"],
+    },
+  },
 ];
 
 export function getToolCount() {

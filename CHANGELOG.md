@@ -8,6 +8,62 @@
 
 ---
 
+## [0.6.0] — 2026-08-15（精准健壮修复 + E2E 成熟能力固化）
+
+> 本次修复了 v0.5.0 全面分析发现的 6 个 P0 缺陷（其中 3 个导致核心命令崩溃）与一批 P1 健壮性问题，
+> 并把 wl-ui-produce 炼钢平台 e2e 的实战模式（三轮策略/网络监控/清理账本/写入门禁）固化为可生成资产。
+
+### Fixed — P0 致命缺陷
+
+- `run-gen` 命令崩溃（`contractPath` 未定义引用）：旗舰功能恢复可用，补 CLI 集成测试防回归。
+- `quality-gate.js` 按文档用法在包外目录调用必然崩溃：模块路径改为基于脚本自身的 `pathToFileURL` 解析。
+- `quality-gate.js` 参数解析缺陷：`--defects x.json`（空格风格）解析失败、路径无效静默跳过（fail-open）→ 统一 arg parser + 输入无效即退出码 1（fail-closed）+ 缺陷 JSON 数组校验。
+- MCP stdio 未 await 异步 handler：`wls_test_run_api` 等异步工具返回 `{}` → 全部 await 后序列化，补 stdio round-trip 测试。
+- T8 规则误杀所有正确的 SteppingThreadGroup（正则匹配到标签名本身）→ 只检查属性名，与 jmeter_validate 共享同一实现；正确的小写空格属性名不再误报。
+- T11 规则死代码（filter(Boolean) 后判空永远为假）→ 按表头定位"预期结果"列逐行判空。
+- 自产 jmx 过不了自审计（缺 CSV 参数化/SLA 断言）→ 生成器补 `<CSVDataSet>` + `DurationAssertion`，新增"生成物必须通过自审计"回归测试。
+
+### Fixed — P1 健壮性
+
+- `run-api`：`{id}` 占位符原样发请求（detail/remove 必 404）→ 先调 queryPage 取真实主键再替换；save 空 body → 按契约必填字段+类型构造合法 payload；新增后自动精确清理（零污染），并输出 JSON 结果供 `quality-gate --smoke-result` 消费；不通过时非零退出。
+- `run-jmeter`：`-Jthreads` 与 jmx 硬编码线程数不对齐 → 线程组改 `${__P(threads,...)}` 属性化（rampUp/loops 同理）；`-e -o` 报告目录已存在即失败 → 运行前自动清理；jtl 解析支持双引号字段（failureMessage 含逗号不错位）；百分位索引 off-by-one 修正。
+- `run-playwright`：无条件追加 `--project=chromium` → 未指定时不追加；testDir 含空格路径加引号。
+- `audit`：目录扫描不排除 node_modules/.git → 增加 IGNORED_DIRS；单文件读取异常不再让整个审计崩溃；二进制/资源扩展名跳过；审计不通过时非零退出（可直接 CI 卡门）。
+- `update` 命令：`force:true` 全量覆盖用户本地修改 → 增量模式（无变化跳过、用户改过的文件保留并提示，`--force` 显式覆盖）。
+- `doctor`：Node 版本字符串比较（v9 误判通过）→ 按 major 数值比较。
+- T13 规则过松（注释含 "CSV" 即通过）→ 精确匹配 `<CSVDataSet`；T16 对齐 JMeter 实际元素 `DurationAssertion`。
+- Playwright 审计误报：只审计 `*.spec.*`/`*.test.*` 文件，playwright.config/支撑模块不再误判。
+- jmeter 生成器：实体名/字段名含 `& < > "` 时产出非法 XML → 全量 XML 转义；自违反 T12 的 `waitForTimeout(1000)` → `waitForResponse`。
+- MCP：版本号硬编码 0.3.1 → 读 package.json；新增 `ping` 响应；`wls_test_fix` 默认预览、需 `confirm: true` 才写文件；`wls_test_env_check` 支持向上探测项目根。
+- 生成契约脚本的请求补 Authorization 头透传（`--token`）。
+
+### Added — E2E 成熟能力固化（源自 wl-ui-produce 实战）
+
+- `lib/e2e-generator.js` + `run-gen --type e2e`：一键生成完整 E2E 工程脚手架：
+  - **三轮策略**：round1-readonly（只读冒烟）/ round2-write（受控写入）/ cleanup（按账本恢复清理）
+  - **network-monitor**：五道硬门（必须观察到业务响应防假通过、HTTP/业务码/console/pageerror 监控、只读模式写请求检测、登录态失效即失败、新增必须返回真实主键）
+  - **run-ledger 清理账本**：业务键必须含 runId、清理必须携带真实主键、原子落盘、可恢复
+  - **environment 写入门禁**：E2E_ENABLE_WRITE + E2E_WRITE_CONFIRM + 主机白名单三重确认
+  - **round2 数据闭环**：新增 → 真实落库校验 → 账本登记 → 精确清理 → 零污染复查
+- MCP 新工具 `wls_test_e2e_generate`（第 13 个）。
+- Skill 参考 `exec/test-script-generator/references/e2e-rounds-pattern.md`：把"测试到什么程度、用例写到什么程度"沉淀为团队标准。
+
+### Added — 测试体系（35 → 90 个，全部通过）
+
+- `test/cli-integration.test.js`：CLI 子命令真实执行回归（拦截"lib 全绿但 bin 崩溃"）。
+- `test/quality-gate.test.js`：CI 脚本双参数风格、fail-closed、包外目录调用回归。
+- `test/self-consistency.test.js`：生成物（jmx/playwright/e2e 脚手架）必须通过自家审计与校验器；T8/T11 精准性回归；XML 转义回归。
+- `test/mcp-stdio.test.js`：stdio JSON-RPC round-trip（initialize/ping/tools/list/异步工具序列化）。
+- `test/e2e-generator.test.js`：脚手架结构与安全模式断言。
+
+---
+
+## [0.5.0] — 2026-08-14（全部缺口清零）
+
+> 详见 git 历史：T13-T20 审计规则、F4-F6 修复、Playwright/JMeter 执行器、质量门 4 指标、覆盖率校验。
+
+---
+
 ## [0.3.2] — 2026-08-05（工程化完善 + README 重写）
 
 ### Added

@@ -7,9 +7,10 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { consumeContract, generateTestCaseMatrix } from "../../lib/contract-consumer.js";
 import { generateSmokeSuite, calculateDI, exportCasesMarkdown } from "../../lib/test-codegen.js";
-import { audit, autoFix } from "../../lib/test-audit.js";
+import { audit, autoFix, checkSteppingThreadGroup } from "../../lib/test-audit.js";
 import { runApiTests, generateSmokeReport } from "../../lib/api-executor.js";
 import { runPlaywright, runJmeter } from "../../lib/executors.js";
+import { generateE2eScaffold } from "../../lib/e2e-generator.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -78,15 +79,28 @@ export function handleSmokeSelect(args) {
 
 // ── wls_test_env_check ─────────────────────────
 export function handleEnvCheck(args) {
+  // 优先用显式 root；否则从 cwd 向上探测 .github（MCP server 的 cwd 不一定是项目根）
+  const root = args.root || findProjectRoot(process.cwd());
   const checks = {
+    root,
     nodeVersion: process.version,
     playwright: checkCommand("npx playwright --version"),
     jmeter: checkCommand("jmeter --version"),
-    standardsDir: existsSync(join(process.cwd(), ".github", "standards")),
-    skillsDir: existsSync(join(process.cwd(), ".github", "skills")),
+    standardsDir: existsSync(join(root, ".github", "standards")),
+    skillsDir: existsSync(join(root, ".github", "skills")),
   };
   const allPass = checks.standardsDir && checks.skillsDir;
   return { checks, ready: allPass };
+}
+
+function findProjectRoot(start) {
+  let dir = resolve(start);
+  while (true) {
+    if (existsSync(join(dir, ".github", "standards")) || existsSync(join(dir, ".github", "skills"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return resolve(start);
+    dir = parent;
+  }
 }
 
 // ── wls_test_quality_analyze ───────────────────
@@ -119,15 +133,12 @@ export function handleJmeterValidate(args) {
     });
   }
 
-  const steppingMatch = content.match(/<SteppingThreadGroup[\s\S]*?>/);
-  if (steppingMatch) {
-    const block = steppingMatch[0];
-    if (block.includes("threads") || block.includes("rampUp")) {
-      issues.push({
-        severity: "fatal",
-        message: "SteppingThreadGroup 属性名必须用小写空格格式",
-      });
-    }
+  const steppingMatch = content.match(/<SteppingThreadGroup[\s\S]*?(?:<\/SteppingThreadGroup>|\/>)/);
+  if (steppingMatch && checkSteppingThreadGroup(content)) {
+    issues.push({
+      severity: "fatal",
+      message: "SteppingThreadGroup 属性名必须用小写空格格式",
+    });
   }
 
   if (!content.includes("ResultCollector") && !content.includes("SummaryReport")) {
@@ -186,6 +197,38 @@ export function handleFix(args) {
   const target = args.target || ".";
   if (!existsSync(target)) return { error: "目标路径不存在" };
 
+  // 安全约束：AI 可调用工具默认只预览，必须显式 confirm: true 才实际写文件
+  const confirmed = args.confirm === true;
+  if (!confirmed) {
+    const preview = collectFixFiles(target)
+      .slice(0, 20)
+      .map((file) => {
+        const result = autoFix(file);
+        return { file, fixes: result.fixes };
+      })
+      .filter((r) => r.fixes.length > 0);
+    return {
+      dryRun: true,
+      hint: "预览模式。确认后传 confirm: true 执行实际写入",
+      files: preview,
+    };
+  }
+
+  const files = collectFixFiles(target);
+  let fixed = 0;
+  const details = [];
+  for (const file of files) {
+    const result = autoFix(file);
+    if (result.changed) {
+      writeFileSync(file, result.content, "utf-8");
+      fixed++;
+      details.push({ file, fixes: result.fixes });
+    }
+  }
+  return { fixed, total: files.length, details };
+}
+
+function collectFixFiles(target) {
   const stat = statSync(target);
   const files = [];
   if (stat.isDirectory()) {
@@ -201,18 +244,7 @@ export function handleFix(args) {
   } else {
     files.push(target);
   }
-
-  let fixed = 0;
-  const details = [];
-  for (const file of files) {
-    const result = autoFix(file);
-    if (result.changed) {
-      writeFileSync(file, result.content, "utf-8");
-      fixed++;
-      details.push({ file, fixes: result.fixes });
-    }
-  }
-  return { fixed, total: files.length, details };
+  return files;
 }
 
 // ── wls_test_run_api ───────────────────────────
@@ -239,6 +271,30 @@ export function handleRunJmeter(args) {
   return runJmeter({ jmxPath: args.jmxPath, threads: args.threads || 100 });
 }
 
+// ── wls_test_e2e_generate ──────────────────────
+export function handleE2eGenerate(args) {
+  const contractPath = args.contractPath;
+  if (!contractPath || !existsSync(contractPath)) {
+    return { error: "需要 contractPath 参数（page-spec.json 或契约文件）" };
+  }
+  const outputDir = args.outputDir || "./e2e";
+  const result = generateE2eScaffold(contractPath, {
+    outputDir,
+    baseUrl: args.baseUrl,
+  });
+  return {
+    outputDir,
+    pageName: result.pageName,
+    files: result.files,
+    next: [
+      "cd e2e && npm i -D @playwright/test && npx playwright install chromium",
+      "设置 E2E_BASE_URL / E2E_API_BASE / E2E_API_PREFIX",
+      "npx playwright test --project=round1-readonly",
+      "写入套件需 E2E_ENABLE_WRITE=1 E2E_WRITE_CONFIRM=<确认串>",
+    ],
+  };
+}
+
 export const HANDLERS = {
   wls_test_standards: handleStandards,
   wls_test_contract_read: handleContractRead,
@@ -252,4 +308,5 @@ export const HANDLERS = {
   wls_test_run_api: handleRunApi,
   wls_test_run_playwright: handleRunPlaywright,
   wls_test_run_jmeter: handleRunJmeter,
+  wls_test_e2e_generate: handleE2eGenerate,
 };

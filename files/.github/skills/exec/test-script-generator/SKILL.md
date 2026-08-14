@@ -22,6 +22,7 @@ metadata:
 5. **生成脚本必须包含完整的等待、断言和数据验证**
 6. 测试流程与覆盖标准参见 `universal-test-rules` 技能
 7. 页面操作（导航、点击、截图、读取DOM）可通过浏览器 MCP 工具（如有）或 Playwright API 完成
+8. **工程级 E2E 项目**（三轮策略/网络监控/清理账本/写入门禁）参见 `references/e2e-rounds-pattern.md`，可用 `npx @agile-team/wl-skills-test run-gen --contract ./page-spec.json --type e2e` 一键生成脚手架
 
 ## ⚠️ 强制规则（必须遵守）
 

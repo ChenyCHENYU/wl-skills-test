@@ -188,9 +188,12 @@ test("JMeter: 生成有效 jmx 含线程组和采样器", () => {
     assert.ok(jmx.includes("<jmeterTestPlan"));
     assert.ok(jmx.includes("<ThreadGroup"));
     assert.ok(jmx.includes("<HTTPSamplerProxy"));
-    assert.ok(jmx.includes("num_threads") && jmx.includes(">50<"));
+    assert.ok(jmx.includes("num_threads"), "应含线程数属性");
+    assert.ok(jmx.includes("__P(threads,50)"), "线程数应属性化（-Jthreads 运行时可调）");
     assert.ok(jmx.includes("ResultCollector"));
     assert.ok(jmx.includes("queryPage"));
+    assert.ok(jmx.includes("<CSVDataSet"), "应含 CSV 参数化");
+    assert.ok(jmx.includes("DurationAssertion"), "应含响应时间 SLA 断言");
   } finally {
     rmSync(tmpFile, { force: true });
   }
