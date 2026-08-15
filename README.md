@@ -6,14 +6,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.9.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.10.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-12-purple.svg" />
-  <img src="https://img.shields.io/badge/MCP-15-teal.svg" />
+  <img src="https://img.shields.io/badge/MCP-17-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
   <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-149%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/tests-164%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -167,6 +167,26 @@ npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --type jmet
 
 ---
 
+## 🔬 沙箱模拟跑（v0.10.0，零污染验证）
+
+```bash
+node node_modules/@agile-team/wl-skills-test/scripts/simulate-e2e.mjs
+```
+
+**只读消费真实 page-spec + 路由映射，生成与执行全在临时沙箱 + 进程内 mock 前后端**（结束即删，源项目零写入）：
+真实 32 页 steel 形态 → `--ui steel` 生成 → 语法/e2e-check 校验 → 沙箱安装 playwright → mock 前端
+（steel-list-panel HTML）+ mock API（jh4j 信封）→ 真实浏览器逐页执行 ROUND1 五硬门（复用生成的
+monitor/selectors/pages 资产）→ 32/32 全绿。环境不具备（无 Chrome/源项目）时优雅跳过，CI 安全。
+
+**UI 适配层**：`run-gen --type e2e --ui element-plus|steel|ant-design`，选择器集中 `support/selectors.js`
+（换组件库只改一个文件）；`E2E_CHANNEL=chrome` 用系统浏览器免下载。
+
+**工位页模板**：page-spec 声明 `features.workstation: true` 生成 `workstation.spec.js`——查看态禁用断言、
+进阶查询回填（拦截模拟计划行）、save/submit 契约（拦截 + 断言炉号），全部 page.route 零污染。
+**子表页签**：`subTables` 自动生成逐页签渲染用例。
+
+---
+
 ## 🧪 深度接口测试（v0.9.0）
 
 ```bash
@@ -248,7 +268,7 @@ e2e/
 
 ---
 
-## 🔧 15 个 MCP 工具
+## 🔧 17 个 MCP 工具
 
 | 工具 | 用途 |
 |------|------|
@@ -267,6 +287,8 @@ e2e/
 | `wls_test_e2e_generate` | 生成深度 E2E 工程脚手架（单页/目录批量/routes 映射） |
 | `wls_test_report_generate` | 聚合执行结果生成测试报告（含上线判定） |
 | `wls_test_e2e_check` | E2E 工程强校验（归属闭环/安全标记/隔离声明） |
+| `wls_test_dict_sync` | 同步系统字典到 dict.json（三形态自动识别） |
+| `wls_test_gate` | 质量门聚合（审计+E2E+冒烟+DI+性能一条命令卡门） |
 
 另将 11 条测试规范以 **MCP resources** 只读资源暴露（`wl-test://standards/*.md`），AI 编辑器按需读取。
 
@@ -348,7 +370,7 @@ wl-skills-test/
 |------|:----:|------|
 | 测试规范 | 11 | 对齐在线 QC 流程规范（另以 MCP resources 只读暴露） |
 | AI Skill | 12 | 功能链 9 + 性能链 3 |
-| MCP 工具 | 15 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
+| MCP 工具 | 17 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
 | 审计规则 | 25 | T1-T25 确定性扫描器（T3/T4 块级精确解析 + T21-T25 E2E 工程约束） |
 | 自动修复 | 6 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码/afterEach/测试名） |
 | 执行器 | 3 | run-api（HTTP）/ run-playwright / run-jmeter + jtl 解析 |
@@ -358,7 +380,7 @@ wl-skills-test/
 | 性能基线 | 1 命令 | perf-compare 劣化判定（CI 非零退出） |
 | 报告聚合 | 1 命令 | report 对齐规范 10 模板 + 上线判定 |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元+集成测试 | 149 | 全部通过（含 mock 后端接口集成/CLI 集成/自一致性/MCP stdio/e2e-check） |
+| 单元+集成测试 | 164 | 全部通过（含 mock 后端集成/沙箱模拟跑脚本/CLI/MCP stdio/e2e-check） |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
@@ -407,7 +429,7 @@ wl-skills-test/
 | 规范审计引擎 | R1-R16 (AST) | B1-B29 | R001-R039 (39条) | **T1-T20** | ✅ 已补齐 |
 | 自动修复 | safe-fix (F1-F5) | code-fix-be (B3/B5) | fix (12条) | **F1-F6** | ✅ 已补齐 |
 | 质量门对象 | 源码本身 | 源码本身 | 源码本身 | **外部 DI + 内部审计** | ✅ 已增强 |
-| MCP 工具数 | 23 | 16 | 10 | **15** | 🟡 可继续扩展 |
+| MCP 工具数 | 23 | 16 | 10 | **17** | 🟡 可继续扩展 |
 | 确定性 vs AI 驱动 | 确定性 | 确定性 | 确定性 | **确定性+AI** | ✅ 已补齐 |
 | 执行能力 | ❌ | ❌ | ❌ | **API/UI/性能执行 ✅** | ✅ 领先 |
 
@@ -466,7 +488,8 @@ wl-skills-test/
 | v0.6.0 | 精准健壮修复（6 P0 + 全量 P1）+ E2E 三轮策略固化 + 测试 90 个 |
 | v0.7.0 | 落地增强：批量 E2E（32 页面实测）+ 登录态自动化 + T3/T4 块级精确化 + 数据工厂 + 报告聚合 + 性能基线 + MCP resources + CI |
 | v0.8.0 | 做深：7 层 project 编排 + 归属清单强校验（e2e-check）+ 路由映射 + 逐页深用例 + UI 契约拦截 + 隔离机制 + 证据附件 + 测试填充标准 + T21-T25 |
-| **v0.9.0** | **接口测试做扎实：DAG 编排 + 四层断言 + 负例执行 + 契约漂移检测 + 权限双账号 + 网络错误防假通过，测试 149 个** |
+| v0.9.0 | 接口测试做扎实：DAG 编排 + 四层断言 + 负例执行 + 契约漂移检测 + 权限双账号 + 网络错误防假通过 |
+| **v0.10.0** | **真实落地闭环：选择器适配层 + 沙箱模拟跑（零污染验证）+ 工位模板 + 子表页签 + 字典同步 + 质量门聚合 + webhook，测试 164 个** |
 
 ---
 

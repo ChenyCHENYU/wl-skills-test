@@ -1,7 +1,7 @@
 {
   "name": "@agile-team/wl-skills-test",
-  "version": "0.9.0",
-  "description": "测试工程 AI 技能包 — 11 条规范、12 个 Skill、15 个 MCP 工具、深度接口测试（DAG+四层断言+契约漂移）、深度 E2E 工程、报告聚合与性能基线",
+  "version": "0.10.0",
+  "description": "测试工程 AI 技能包 — 11 条规范、12 个 Skill、17 个 MCP 工具、深度接口测试、深度 E2E 工程（选择器适配+工位模板+沙箱模拟跑）、字典同步、质量门聚合",
   "type": "module",
   "main": "./lib/index.js",
   "bin": {

@@ -196,6 +196,36 @@ export const TOOL_DESCRIPTORS = [
       },
     },
   },
+  {
+    name: "wls_test_dict_sync",
+    description: "同步系统字典到 dict.json（自动识别三种响应形态，支持字段级映射，供数据工厂/负例/round2 消费）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        baseUrl: { type: "string", description: "被测系统基址" },
+        token: { type: "string", description: "认证 token" },
+        dictApi: { type: "string", description: "字典接口路径（默认 /pl/system/dict/all）" },
+        output: { type: "string", description: "输出文件（默认 ./dict.json）" },
+      },
+      required: ["baseUrl"],
+    },
+  },
+  {
+    name: "wls_test_gate",
+    description: "质量门聚合（一条命令：审计+E2E 强校验+冒烟通过率+DI+性能基线，任一失败即阻断）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        auditDir: { type: "string", description: "测试代码审计目录" },
+        e2eDir: { type: "string", description: "E2E 工程目录" },
+        smokeResult: { type: "string", description: "run-api JSON 结果路径" },
+        defects: { type: "string", description: "缺陷清单 JSON 路径" },
+        cases: { type: "number", description: "总用例数" },
+        perfCurrent: { type: "string", description: "当前性能结果" },
+        perfBaseline: { type: "string", description: "性能基线" },
+      },
+    },
+  },
 ];
 
 export function getToolCount() {

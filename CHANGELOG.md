@@ -8,6 +8,55 @@
 
 ---
 
+## [0.10.0] — 2026-08-15（真实落地闭环：选择器适配层 + 沙箱模拟跑 + 工位模板 + 字典同步 + 质量门聚合）
+
+> 本轮以"沙箱模拟跑"为核心验证手段：**只读消费 wl-ui-produce 真实 page-spec（32 页）+ 真实路由映射**，
+> 生成物与执行全部在临时沙箱 + 进程内 mock 前后端完成（`scripts/simulate-e2e.mjs`，结束即删，源项目零写入）。
+> 模拟跑一次性抓出并修复 3 个真实落地 bug（见 Fixed）。
+
+### Added — 选择器适配层（换组件库只改一个文件）
+
+- `run-gen --type e2e --ui element-plus|steel|ant-design`（默认 element-plus，运行时 `E2E_UI` 可切）：
+  生成 `support/selectors.js` 集中管理 grid/row/empty/headerCells/dialog/toolbar/工位 选择器；
+  **steel = AG Grid + steel-list-panel 自研组件（wl-ui-produce 形态）**；全部 spec 模板改走 `sel.*`。
+
+### Added — 沙箱模拟跑（scripts/simulate-e2e.mjs）
+
+- 端到端验证链：真实 page-spec + routes → 生成 → node --check + e2e-check → 沙箱安装 playwright →
+  进程内 mock 前端（steel-list-panel HTML）+ mock API（jh4j 信封）→ 真实浏览器逐页执行 ROUND1 五硬门
+  （复用生成的 monitor/selectors/pages 资产）→ 32/32 全绿 → 沙箱即删。
+- 环境自检优雅跳过（无 Chrome/无源项目时 exit 0，CI 安全）；浏览器优先级 E2E_CHANNEL > 系统 Chrome > bundled chromium。
+
+### Added — 工位页模板 + 子表页签
+
+- `features.workstation: true`（或 mode=WORKSTATION）生成 `workstation.spec.js`：查看态表单禁用断言、
+  进阶查询选计划回填（拦截 plan 查询返回模拟行，确定性验证）、新增后可编辑、save/submit 契约
+  （page.route 拦截 + 断言携带炉号）——**全部拦截零污染**；归属清单 WORKSTATION_SPECS 强校验必须含 page.route。
+- page-spec `subTables` → round1-detail 逐页签用例（tab 角色定位 → 网格渲染断言，非页签布局优雅 skip）。
+
+### Added — 字典同步 / 质量门聚合 / webhook
+
+- `dict-sync` 命令 + MCP `wls_test_dict_sync`：拉取系统字典归一化（兼容 map-of-arrays / jh4j 列表式 /
+  map-of-items 三形态自动识别），`--map 字段=字典码` 字段级映射，输出供 run-api --dict-file / round2 消费。
+- `gate` 命令 + MCP `wls_test_gate`：一条命令聚合 审计(T1-T25) + e2e-check + 冒烟通过率 + DI 质量门 +
+  性能基线（复用各 lib 实现），任一失败 exit 1；输入无效 fail-closed。
+- `report --webhook <url>` / `gate --webhook`：结论推送企微/钉钉/raw（失败明细 Markdown，推送失败仅告警）。
+- config 支持 `E2E_CHANNEL`（chrome/msedge 系统浏览器，免下载）。
+
+### Fixed — 模拟跑抓出的真实 bug
+
+- 生成 config 在 `"type": "module"` 包内使用 `__dirname` → ESM 加载即崩（改 `import.meta.url`）。
+- `video: "retain-on-failure"` 依赖 ffmpeg 二进制，无下载环境全部用例挂 → 默认关闭，`E2E_VIDEO=1` 按需启用。
+- 系统 Chrome（151）与 Playwright 1.62 的 runner 组合在本机导航挂起（裸 launch 正常）→ 模拟驱动改进程内
+  复用生成资产直驱；channel 兼容性已在 README 标注。
+
+### Tests
+
+- 149 → **164 个**全部通过：新增 selectors/workstation/tabs 生成(4)、dict-sync 三形态+错误(6)、
+  gate 聚合(4)、CLI gate/webhook(2)；修复测试间 ESM URL 缓存干扰（独立 outDir）。
+
+---
+
 ## [0.9.0] — 2026-08-15（接口测试做扎实：DAG 编排 + 四层断言 + 负例 + 契约漂移）
 
 > run-api 从"成功码冒烟"（L2）升级为"深度接口测试"（L3+）。

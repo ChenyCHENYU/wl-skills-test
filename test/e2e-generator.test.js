@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { writeFileSync, readFileSync, existsSync, rmSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { generateE2eScaffold } from "../lib/e2e-generator.js";
 
 const TMP = join(process.cwd(), ".tmp-e2e-gen");
@@ -345,7 +346,7 @@ test("e2e-generator: 生成 package.json scripts（type module + 7 project 一�
 test("e2e-generator: features.testFill 时 round2 接入填充钩子", () => {
   mkdirSync(TMP, { recursive: true });
   const spec = join(TMP, "spec.json");
-  const withFill = { ...REAL_PAGE_SPEC, features: { testFill: true } };
+  const withFill = { ...DEEP_PAGE_SPEC, features: { testFill: true } };
   writeFileSync(spec, JSON.stringify(withFill));
   const outDir = join(TMP, "e2e");
   try {
@@ -353,6 +354,85 @@ test("e2e-generator: features.testFill 时 round2 接入填充钩子", () => {
     const round2 = readFileSync(join(outDir, "tests", "round2-write.spec.js"), "utf-8");
     assert.ok(round2.includes("wl-test-fill"), "应点击填充钩子");
     assert.ok(round2.includes("受控写入(UI)"), "有表单应为 UI 级");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+// ── v0.10.0: 选择器适配层 / 工位模板 / 子表页签 ──
+
+test("e2e-generator: 生成 support/selectors.js 且 steel 适配生效", () => {
+  mkdirSync(TMP, { recursive: true });
+  const dir = join(TMP, "specs");
+  mkdirSync(join(dir, "a"), { recursive: true });
+  writeFileSync(join(dir, "a", "page-spec.json"), JSON.stringify(DEEP_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(dir, { outputDir: outDir, ui: "steel" });
+    const selectors = readFileSync(join(outDir, "support", "selectors.js"), "utf-8");
+    assert.ok(selectors.includes('"steel"'), "应写入 steel 适配");
+    assert.ok(selectors.includes("steel-list-panel"), "应含 steel-list-panel 选择器");
+    assert.ok(selectors.includes("E2E_UI"), "应支持运行时切换");
+    // spec 应通过 sel 引用而非硬编码
+    const round1 = readFileSync(join(outDir, "tests", "round1-readonly.spec.js"), "utf-8");
+    assert.ok(round1.includes('from "../support/selectors.js"'), "round1 应导入 sel");
+    assert.ok(round1.includes("sel.gridWait"), "应使用 sel.gridWait");
+    assert.ok(round1.includes("sel.row"), "应使用 sel.row");
+    const config = readFileSync(join(outDir, "playwright.config.js"), "utf-8");
+    assert.ok(config.includes("E2E_CHANNEL"), "config 应支持 channel 切换");
+    assert.ok(config.includes("E2E_VIDEO"), "video 应按需启用（ffmpeg 依赖规避）");
+    assert.ok(config.includes('import.meta.url'), "config 应为 ESM 安全（不依赖 __dirname）");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: features.workstation 生成工位模板（拦截式零污染）", async () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec-ws.json");
+  const ws = { ...DEEP_PAGE_SPEC, features: { workstation: true } };
+  writeFileSync(spec, JSON.stringify(ws));
+  // 独立 outDir：动态 import 的 suites.js 按 URL 缓存，与其他用例共用路径会命中旧模块
+  const outDir = join(TMP, "e2e-ws");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const wsSpec = readFileSync(join(outDir, "tests", "workstation.spec.js"), "utf-8");
+    assert.ok(wsSpec.includes("page.route("), "save/submit 必须拦截");
+    assert.ok(wsSpec.includes("查看态"), "应含查看态断言");
+    assert.ok(wsSpec.includes("进阶查询"), "应含进阶查询回填");
+    assert.ok(/W4 验证保存契约/.test(wsSpec), "应含保存契约用例");
+    // suites 归属强校验真实执行（workstation 组存在）
+    const mod = await import(pathToFileURL(join(outDir, "fixtures", "suites.js")).href);
+    mod.assertE2ESpecCatalog(join(outDir, "tests"));
+    // package.json scripts
+    const pkg = JSON.parse(readFileSync(join(outDir, "package.json"), "utf-8"));
+    assert.ok(pkg.scripts["e2e:workstation"], "应有工位执行脚本");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: subTables 生成子表页签用例", () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  const withTabs = {
+    ...DEEP_PAGE_SPEC,
+    mode: "DETAIL_TABS",
+    subTables: [
+      { key: "t1", title: "机台工序时间", name: "t1", label: "t1" },
+      { key: "t2", title: "运输待机时间", name: "t2", label: "t2" },
+    ],
+  };
+  writeFileSync(spec, JSON.stringify(withTabs));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const detail = readFileSync(join(outDir, "tests", "round1-detail.spec.js"), "utf-8");
+    assert.ok(detail.includes("验证子表页签渲染"), "应生成页签用例模板");
+    assert.ok(detail.includes("pageEntry.tabs"), "应循环页面页签数据");
+    assert.ok(detail.includes('getByRole("tab"'), "应按 tab 角色定位页签");
+    const pages = readFileSync(join(outDir, "fixtures", "pages.js"), "utf-8");
+    assert.ok(pages.includes("机台工序时间"), "pages.js 应含页签数据");
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }

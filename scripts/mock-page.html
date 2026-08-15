@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>模拟炼钢</title></head>
+<body>
+<div class="steel-list-panel">
+  <div class="steel-list-panel__query-card">
+    <div class="el-form-item"><label>料名</label><input type="text" placeholder="料名"/></div>
+    <button>查询</button><button>重置</button>
+  </div>
+  <div class="steel-list-panel__actions">
+    <button>新增</button><button>修改</button><button>删除</button>
+  </div>
+  <div class="steel-list-panel__table">
+    <div class="ag-root-wrapper">
+      <div class="ag-header"><span class="ag-header-cell-text">料号</span><span class="ag-header-cell-text">料名</span></div>
+      <div class="ag-body">
+        <div class="ag-row" row-index="0"><span col-id="material_id">SIM001</span><span col-id="material_name">模拟物料</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  fetch('/pl/base-data/material/queryPage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current: 1, size: 10 })
+  }).catch(function(){});
+</script>
+</body></html>

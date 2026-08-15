@@ -12,6 +12,8 @@ import { runApiTests, generateSmokeReport } from "../../lib/api-executor.js";
 import { runPlaywright, runJmeter } from "../../lib/executors.js";
 import { generateE2eScaffold } from "../../lib/e2e-generator.js";
 import { e2eCheck } from "../../lib/e2e-check.js";
+import { syncDict } from "../../lib/dict-sync.js";
+import { runGate } from "../../lib/gate.js";
 import { generateReport } from "../../lib/report-generator.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -349,6 +351,29 @@ export async function handleE2eCheck(args) {
   return e2eCheck(args.target || "./e2e");
 }
 
+// ── wls_test_dict_sync ─────────────────────────
+export async function handleDictSync(args) {
+  return syncDict({
+    baseUrl: args.baseUrl,
+    token: args.token,
+    dictApi: args.dictApi,
+    output: args.output || "./dict.json",
+  });
+}
+
+// ── wls_test_gate ──────────────────────────────
+export async function handleGate(args) {
+  return runGate({
+    auditDir: args.auditDir,
+    e2eDir: args.e2eDir,
+    smokeResult: args.smokeResult,
+    defects: args.defects,
+    cases: args.cases,
+    perfCurrent: args.perfCurrent,
+    perfBaseline: args.perfBaseline,
+  });
+}
+
 export const HANDLERS = {
   wls_test_standards: handleStandards,
   wls_test_contract_read: handleContractRead,
@@ -365,4 +390,6 @@ export const HANDLERS = {
   wls_test_e2e_generate: handleE2eGenerate,
   wls_test_report_generate: handleReportGenerate,
   wls_test_e2e_check: handleE2eCheck,
+  wls_test_dict_sync: handleDictSync,
+  wls_test_gate: handleGate,
 };

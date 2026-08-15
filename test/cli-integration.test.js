@@ -219,3 +219,55 @@ test("CLI: 未知命令非零退出", () => {
   assert.notEqual(r.status, 0);
   assert.ok(r.stderr.includes("未知命令") || r.stdout.includes("未知命令"));
 });
+
+test("CLI: gate 聚合卡门（通过场景零退出）", () => {
+  setupTmp();
+  writeFileSync(join(TMP, "smoke.json"), JSON.stringify({ summary: { passRate: 100 } }));
+  try {
+    const r = runCli(["gate", "--smoke-result", join(TMP, "smoke.json")]);
+    assert.equal(r.status, 0, `stdout: ${r.stdout}`);
+    assert.ok(r.stdout.includes("质量门通过"));
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("CLI: report --webhook 推送结论到指定地址", async () => {
+  setupTmp();
+  const api = join(TMP, "api.json");
+  writeFileSync(
+    api,
+    JSON.stringify({ summary: { entity: "X", total: 2, passed: 2, failed: 0, errors: 0, skipped: 0, passRate: 100, decision: "通过（可转测）" }, results: [] }),
+  );
+  const output = join(TMP, "报告.md");
+  let received = null;
+  const { createServer } = await import("node:http");
+  const { spawn } = await import("node:child_process");
+  const server = createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      received = JSON.parse(body);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end("{}");
+    });
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const hook = `http://127.0.0.1:${server.address().port}/hook`;
+  try {
+    // 异步 spawn（spawnSync 会阻塞父进程事件循环，mock server 无法响应）
+    const r = await new Promise((resolve) => {
+      const p = spawn(process.execPath, [BIN, "report", "--api", api, "--output", output, "--webhook", hook]);
+      let out = "";
+      p.stdout.on("data", (d) => (out += d));
+      p.on("close", (code) => resolve({ status: code, stdout: out }));
+    });
+    assert.equal(r.status, 0, `stdout: ${r.stdout}`);
+    assert.ok(r.stdout.includes("webhook 已推送"), r.stdout);
+    assert.ok(received, "mock webhook 应收到 POST");
+    assert.ok(JSON.stringify(received).includes("上线条件"));
+  } finally {
+    server.close();
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});

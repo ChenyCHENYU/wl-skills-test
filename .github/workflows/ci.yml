@@ -18,8 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - name: 运行测试（90+ 单元/集成/自一致性/MCP stdio）
-        run: node --test test/index.test.js test/audit-and-executor.test.js test/mcp-and-generators.test.js test/executors-and-extended.test.js test/cli-integration.test.js test/quality-gate.test.js test/self-consistency.test.js test/mcp-stdio.test.js test/e2e-generator.test.js test/data-factory.test.js test/perf-compare.test.js test/report-generator.test.js
+      - name: 运行测试（164+ 单元/集成/自一致性/MCP stdio/mock 后端）
+        run: node --test test/index.test.js test/audit-and-executor.test.js test/mcp-and-generators.test.js test/executors-and-extended.test.js test/cli-integration.test.js test/quality-gate.test.js test/self-consistency.test.js test/mcp-stdio.test.js test/e2e-generator.test.js test/data-factory.test.js test/perf-compare.test.js test/report-generator.test.js test/api-executor.test.js test/dict-sync.test.js test/gate.test.js
       - name: npm pack 校验（发布产物完整性）
         run: npm pack --dry-run
 
