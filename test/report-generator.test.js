@@ -5,7 +5,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { generateReport } from "../lib/report-generator.js";
+import { generateReport, discoverDimensionResults } from "../lib/report-generator.js";
+import { appendHistory } from "../lib/report-dimensions.js";
 
 const TMP = join(process.cwd(), ".tmp-report");
 
@@ -85,4 +86,42 @@ test("report: MCP 内联对象（非文件路径）", () => {
 test("report: 无有效来源返回错误", () => {
   const result = generateReport({});
   assert.ok(result.error);
+});
+
+// ── v0.11.0: 自动发现 / 趋势 / 快照 ──
+
+test("report: 自动发现 test-reports/ 维度结果", () => {
+  mkdirSync(TMP, { recursive: true });
+  try {
+    writeFileSync(join(TMP, "api-result.json"), JSON.stringify(API_JSON));
+    writeFileSync(join(TMP, "playwright-result.json"), JSON.stringify({ summary: { passed: 10, failed: 0, skipped: 0, total: 10 } }));
+    writeFileSync(join(TMP, "defects.json"), JSON.stringify([{ severity: "minor", status: "closed", module: "a" }]));
+    const found = discoverDimensionResults(TMP);
+    assert.ok(found.api.endsWith("api-result.json"));
+    assert.ok(found.playwright.endsWith("playwright-result.json"));
+    assert.ok(found.defects.endsWith("defects.json"));
+    assert.equal(found.jmeter, undefined, "无性能结果不应出现");
+
+    // 端到端：发现的结果直接喂 generateReport
+    const result = generateReport({ api: found.api, playwright: found.playwright, defects: found.defects, cases: 100 });
+    assert.equal(result.pass, true);
+    assert.equal(result.snapshot.api, 100);
+    assert.equal(result.snapshot.ui, 100);
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("report: --trend 渲染历史趋势", () => {
+  mkdirSync(TMP, { recursive: true });
+  try {
+    // 先写两份历史
+    appendHistory(TMP, { kind: "report", pass: true, api: 100, ui: 98 });
+    appendHistory(TMP, { kind: "report", pass: false, api: 70, ui: 90 });
+    const result = generateReport({ api: API_JSON, trend: true, reportsDir: TMP });
+    assert.ok(result.report.includes("运行趋势"), "应含趋势章节");
+    assert.ok(result.report.includes("| 70"), "应含历史 API 通过率");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
 });

@@ -229,6 +229,79 @@ test("CLI: gate 聚合卡门（通过场景零退出）", () => {
     assert.ok(r.stdout.includes("质量门通过"));
   } finally {
     rmSync(TMP, { recursive: true, force: true });
+    rmSync(join(process.cwd(), "test-reports"), { recursive: true, force: true });
+  }
+});
+
+test("CLI: report 自动发现 + 索引 + 历史产出（test-reports/ 目录约定）", () => {
+  setupTmp();
+  const reportsDir = join(TMP, "test-reports");
+  mkdirSync(reportsDir, { recursive: true });
+  writeFileSync(
+    join(reportsDir, "api-result.json"),
+    JSON.stringify({ summary: { entity: "X", total: 2, passed: 2, failed: 0, errors: 0, skipped: 0, passRate: 100, decision: "通过（可转测）" }, results: [] }),
+  );
+  writeFileSync(join(reportsDir, "playwright-result.json"), JSON.stringify({ summary: { passed: 8, failed: 0, skipped: 0, total: 8 } }));
+  try {
+    // 不传任何来源 → 自动发现（cwd=TMP）
+    const r = runCli(["report", "--trend"], { cwd: TMP });
+    assert.equal(r.status, 0, `stdout: ${r.stdout}`);
+    assert.ok(r.stdout.includes("自动发现维度结果"), r.stdout);
+    assert.ok(existsSync(join(reportsDir, "测试报告.md")));
+    assert.ok(existsSync(join(reportsDir, "index.md")));
+    assert.ok(existsSync(join(reportsDir, "history.jsonl")));
+    const md = readFileSync(join(reportsDir, "测试报告.md"), "utf-8");
+    assert.ok(md.includes("具备上线条件"));
+    assert.ok(md.includes("API 接口冒烟"));
+    assert.ok(md.includes("UI 自动化"));
+    const idx = readFileSync(join(reportsDir, "index.md"), "utf-8");
+    assert.ok(idx.includes("api-报告.md") || idx.includes("api-result.json") || idx.includes("测试报告.md"));
+    // 二次运行 → 趋势出现两行历史
+    runCli(["report", "--trend"], { cwd: TMP });
+    const md2 = readFileSync(join(reportsDir, "测试报告.md"), "utf-8");
+    assert.ok(md2.includes("运行趋势"), "第二次运行应含趋势");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("CLI: audit 默认产出审计维度报告到 test-reports/", () => {
+  setupTmp();
+  const good = join(TMP, "good.spec.js");
+  writeFileSync(
+    good,
+    `import { test, expect } from "@playwright/test";\ntest.beforeEach(async ({ page }) => {});\ntest.afterEach(async ({ page }) => {});\ntest("should display list", async ({ page }) => {\n  await expect(page.locator("table")).toBeVisible();\n});\n`,
+  );
+  try {
+    const r = runCli(["audit", "--target", TMP], { cwd: TMP });
+    assert.equal(r.status, 0, `stdout: ${r.stdout}`);
+    const reportsDir = join(TMP, "test-reports");
+    assert.ok(existsSync(join(reportsDir, "audit-报告.md")), "应产出审计维度报告");
+    assert.ok(existsSync(join(reportsDir, "audit-result.json")));
+    const md = readFileSync(join(reportsDir, "audit-报告.md"), "utf-8");
+    assert.ok(md.includes("测试代码审计报告"));
+    assert.ok(md.includes("T1-T25"));
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("CLI: run-gen --granularity field 生成细粒度用例", () => {
+  setupTmp();
+  const contract = join(TMP, "contract.json");
+  writeFileSync(contract, JSON.stringify(SAMPLE_CONTRACT));
+  const output = join(TMP, "cases.md");
+  try {
+    const r = runCli(["run-gen", "--contract", contract, "--granularity", "field", "--output", output]);
+    assert.equal(r.status, 0, `stderr: ${r.stderr}`);
+    const md = readFileSync(output, "utf-8");
+    assert.ok(md.includes("TC-"), "应含基线矩阵");
+    assert.ok(md.includes("细粒度用例"), "应含细粒度章节");
+    assert.ok(md.includes("FG-"), "应含 FG- 编号用例");
+    assert.ok(md.includes("run-api"), "应标注 DAG 执行映射");
+    assert.ok(r.stdout.includes("细粒度"), "控制台应提示细粒度统计");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
   }
 });
 

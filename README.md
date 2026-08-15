@@ -6,14 +6,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.10.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.11.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-12-purple.svg" />
   <img src="https://img.shields.io/badge/MCP-17-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
   <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-164%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/tests-179%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -164,6 +164,43 @@ npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --type jmet
 | kit | `page-spec.json` | 页面 CRUD 推断 + Playwright 选择器 |
 
 > **生成即合规**：所有生成物均通过自家 T1-T20 审计（含 CSV 参数化、SLA 断言、`__P` 属性化线程参数），由 `test/self-consistency.test.js` 回归保证。
+
+---
+
+## 📊 test-reports 统一报告体系（v0.11.0）
+
+安装包的项目里，**每个维度的测试都自动产出报告到 `test-reports/`**，并支持陆续迭代的趋势追踪：
+
+| 命令 | 产出 |
+|------|------|
+| `run-api` | `api-报告.md`（四层断言/负例/权限/漂移/零污染章节）+ `api-result.json` |
+| `run-playwright` | `e2e-报告.md`（解析 Playwright 原生 results.json，含失败明细）+ `playwright-result.json` |
+| `run-jmeter` | `perf-报告.md`（P50/95/99 SLA 判定）+ `perf-result.json` |
+| `audit` | `audit-报告.md`（T1-T25 规则分布+文件明细+修复入口）+ `audit-result.json` |
+| `perf-compare` | `perf-compare-报告.md`（基线劣化判定） |
+| `report`（不传参数） | **自动发现**上述结果 → `测试报告.md`（规范 10 + 上线判定）+ `index.md`（索引） |
+| `report --trend` | 追加**最近 5 次汇总趋势表**（history.jsonl 数据源，跨迭代追踪质量） |
+
+```
+test-reports/
+├── api-报告.md / api-result.json        # 接口维度
+├── e2e-报告.md / playwright-result.json  # UI 维度
+├── perf-报告.md / perf-result.json       # 性能维度
+├── audit-报告.md / audit-result.json     # 审计维度
+├── 测试报告.md / index.md                # 汇总 + 索引
+└── history.jsonl                          # 运行历史（趋势数据源）
+```
+
+## 🧩 细粒度用例生成（v0.11.0）
+
+```bash
+npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --granularity field
+```
+
+基线矩阵（CRUD/权限/必填）之上，**颗粒度到字段**：必填置空、超长、数值 min/max 边界、非数值类型、
+非法枚举、XSS/SQL 注入特殊字符、前后空格；操作级：重复提交、不存在主键、重复删除、无权限（每个写操作）、
+分页边界、组合查询收敛。每条含优先级/前置/步骤/预期，且标注 **dimension ↔ run-api DAG 执行映射**
+（大部分负例/权限/重复/分页用例由 run-api 自动执行闭环）。
 
 ---
 
@@ -380,7 +417,7 @@ wl-skills-test/
 | 性能基线 | 1 命令 | perf-compare 劣化判定（CI 非零退出） |
 | 报告聚合 | 1 命令 | report 对齐规范 10 模板 + 上线判定 |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元+集成测试 | 164 | 全部通过（含 mock 后端集成/沙箱模拟跑脚本/CLI/MCP stdio/e2e-check） |
+| 单元+集成测试 | 179 | 全部通过（含 mock 后端集成/沙箱模拟跑/CLI/MCP stdio/e2e-check/报告体系） |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
@@ -489,7 +526,8 @@ wl-skills-test/
 | v0.7.0 | 落地增强：批量 E2E（32 页面实测）+ 登录态自动化 + T3/T4 块级精确化 + 数据工厂 + 报告聚合 + 性能基线 + MCP resources + CI |
 | v0.8.0 | 做深：7 层 project 编排 + 归属清单强校验（e2e-check）+ 路由映射 + 逐页深用例 + UI 契约拦截 + 隔离机制 + 证据附件 + 测试填充标准 + T21-T25 |
 | v0.9.0 | 接口测试做扎实：DAG 编排 + 四层断言 + 负例执行 + 契约漂移检测 + 权限双账号 + 网络错误防假通过 |
-| **v0.10.0** | **真实落地闭环：选择器适配层 + 沙箱模拟跑（零污染验证）+ 工位模板 + 子表页签 + 字典同步 + 质量门聚合 + webhook，测试 164 个** |
+| v0.10.0 | 真实落地闭环：选择器适配层 + 沙箱模拟跑（零污染验证）+ 工位模板 + 子表页签 + 字典同步 + 质量门聚合 + webhook |
+| **v0.11.0** | **报告体系闭环：test-reports/ 统一产出 + 自动发现 + 历史趋势 + 索引；细粒度用例生成（字段级边界/非法值/安全，与 run-api DAG 执行映射），测试 179 个** |
 
 ---
 

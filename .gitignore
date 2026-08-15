@@ -1,5 +1,6 @@
 node_modules/
 .tmp-*/
+test-reports/
 *.tgz
 .playwright-report/
 test-results/

@@ -45,6 +45,11 @@ export const TOOL_DESCRIPTORS = [
         },
         contractPath: { type: "string" },
         requirementPath: { type: "string" },
+        granularity: {
+          type: "string",
+          enum: ["", "field"],
+          description: "field = 追加字段级细粒度用例（边界/非法值/安全/操作闭环，与 run-api DAG 映射）",
+        },
       },
       required: ["type"],
     },

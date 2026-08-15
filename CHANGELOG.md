@@ -8,6 +8,45 @@
 
 ---
 
+## [0.11.0] — 2026-08-15（报告体系闭环 + 细粒度用例：每个维度产出到使用项目 + 历史趋势迭代）
+
+> 端到端验证（使用项目视角）：run-api / audit / report 依次执行 → `test-reports/` 汇聚 7 类产物
+> （api-报告/api-result/audit-报告/audit-result/测试报告/index/history.jsonl），report 自动发现维度结果、
+> 二次运行出现趋势表，mock 后端零数据残留。
+
+### Added — test-reports/ 统一报告体系（报告产出到使用项目）
+
+- **目录约定**：所有报告产出统一进 `test-reports/`（`--reports-dir` 可改）——
+  `api-报告.md + api-result.json`（run-api）/ `e2e-报告.md + playwright-result.json`（run-playwright，解析
+  Playwright 原生 results.json 提取失败明细）/ `perf-报告.md + perf-result.json`（run-jmeter）/
+  `audit-报告.md + audit-result.json`（audit，规则分布+文件明细+修复入口）/ `测试报告.md + index.md`（report）/
+  `perf-compare-报告.md`（perf-compare）。
+- **report 自动发现**：不传来源参数时扫描 `test-reports/` 约定文件（显式参数优先），聚合各维度生成规范 10 报告 + 上线判定。
+- **运行历史与趋势**：`history.jsonl` 记录每次执行（kind/time/pass/通过率）；`report --trend` 追加最近 5 次趋势表
+  ——支持"陆续迭代"的跨版本质量追踪；`index.md` 报告索引自动生成。
+- gate 亦写入历史（kind=gate）。
+
+### Added — 细粒度测试用例生成（颗粒度到字段，闭环可执行）
+
+- `run-gen --granularity field`（或 MCP `wls_test_case_generate { granularity: "field" }`）：在基线矩阵之上追加
+  **字段级**用例——必填置空(P0)/超长(P1)/数值 min·min-1·max·max+1 边界(P1)/非数值类型(P0)/非法枚举(P0)/
+  特殊字符 XSS·SQL 注入探测(P2)/前后空格(P3)，以及**操作级**——重复提交(P0)/不存在主键(P1)/重复删除(P2)/
+  无权限(P0，每个写操作)/分页边界(P2)/组合查询收敛(P3)。
+- **执行闭环映射**：每条用例标注 dimension 与 autoExec——与 run-api DAG 步骤一一对应
+  （field-required/type/length、op-duplicate/permission/pagination 等由 run-api 自动执行），其余诚实标注为人工/待扩展。
+- 输出对齐规范 02/03（编号/优先级/前置/步骤/预期 + P0-P3 分布统计）。
+
+### Changed
+
+- run-api 默认输出从 cwd 散文件改为 `test-reports/api-报告.md`（`--output` 仍可覆盖）。
+
+### Tests
+
+- 164 → **179 个**全部通过：新增 case-fine-gen 规则(5)、维度报告渲染/解析(5)、自动发现+趋势+快照(2)、
+  CLI report 自动发现+索引+历史/audit 维度报告/细粒度生成(4)。
+
+---
+
 ## [0.10.0] — 2026-08-15（真实落地闭环：选择器适配层 + 沙箱模拟跑 + 工位模板 + 字典同步 + 质量门聚合）
 
 > 本轮以"沙箱模拟跑"为核心验证手段：**只读消费 wl-ui-produce 真实 page-spec（32 页）+ 真实路由映射**，

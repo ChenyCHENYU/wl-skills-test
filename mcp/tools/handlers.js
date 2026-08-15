@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { consumeContract, generateTestCaseMatrix } from "../../lib/contract-consumer.js";
 import { generateSmokeSuite, calculateDI, exportCasesMarkdown } from "../../lib/test-codegen.js";
+import { generateFineGrainedCases } from "../../lib/case-fine-gen.js";
 import { audit, autoFix, checkSteppingThreadGroup } from "../../lib/test-audit.js";
 import { runApiTests, generateSmokeReport } from "../../lib/api-executor.js";
 import { runPlaywright, runJmeter } from "../../lib/executors.js";
@@ -51,7 +52,7 @@ export function handleCaseGenerate(args) {
     const apiTests = cases.filter((c) => c.type === "api").length;
     const permTests = cases.filter((c) => c.type === "permission").length;
     const boundTests = cases.filter((c) => c.type === "boundary").length;
-    return {
+    const payload = {
       caseCount: cases.length,
       summary: {
         entity: result.summary.entity || result.summary.pageName,
@@ -62,6 +63,18 @@ export function handleCaseGenerate(args) {
       },
       cases,
     };
+    // granularity=field：追加字段级细粒度用例（与 run-api DAG 映射）
+    if (args.granularity === "field") {
+      const fine = generateFineGrainedCases(result.summary);
+      payload.fineGrainedCases = fine;
+      payload.fineGrained = {
+        count: fine.length,
+        autoExecutable: fine.filter((c) => c.autoExec).length,
+        byPriority: fine.reduce((m, c) => ({ ...m, [c.priority]: (m[c.priority] || 0) + 1 }), {}),
+      };
+      payload.caseCount += fine.length;
+    }
+    return payload;
   }
   return {
     error: "需要 contractPath 参数（kit wl-api-contract 或 bd wl-contract.json）",
