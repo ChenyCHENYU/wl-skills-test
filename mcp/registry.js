@@ -121,13 +121,17 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_run_api",
-    description: "执行 API 接口测试（从契约自动发起 HTTP 请求验证可用性，零依赖）",
+    description: "执行深度 API 接口测试（DAG 编排 + 四层断言：成功码/结构/写后读回/负例与安全 + 契约漂移检测 + 零污染清理）",
     inputSchema: {
       type: "object",
       properties: {
         contractPath: { type: "string", description: "契约文件路径" },
-        baseUrl: { type: "string", description: "目标服务地址" },
-        token: { type: "string", description: "认证 token（可选）" },
+        baseUrl: { type: "string", description: "目标基址" },
+        token: { type: "string", description: "认证 token" },
+        noPermToken: { type: "string", description: "无权限账号 token（启用权限拒绝验证）" },
+        dictFile: { type: "string", description: "字典 JSON 路径（{字段名: [合法值]}）" },
+        lenientCoercion: { type: "boolean", description: "类型负例被后端宽恕时记 warn" },
+        permWriteProbe: { type: "boolean", description: "对写操作做权限探针（意外成功自动清理）" },
       },
       required: ["contractPath"],
     },

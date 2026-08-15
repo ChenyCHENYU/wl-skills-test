@@ -259,6 +259,10 @@ export async function handleRunApi(args) {
     contractPath,
     baseUrl: baseUrl || "http://localhost:8080",
     token,
+    noPermToken: args.noPermToken,
+    dictFile: args.dictFile,
+    lenientCoercion: args.lenientCoercion === true,
+    permWriteProbe: args.permWriteProbe === true,
   });
   return result;
 }

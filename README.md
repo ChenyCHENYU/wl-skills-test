@@ -6,14 +6,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.8.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.9.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-12-purple.svg" />
   <img src="https://img.shields.io/badge/MCP-15-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
-  <img src="https://img.shields.io/badge/e2e-7%E5%B1%82project-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-135%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
+  <img src="https://img.shields.io/badge/tests-149%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -59,7 +59,7 @@ npx @agile-team/wl-skills-test audit --target ./tests/
 # 自动修复测试代码反模式
 npx @agile-team/wl-skills-test fix --target ./tests/
 
-# 执行 API 接口测试（从契约自动发请求，{id} 自动取真实主键，新增自动清理）
+# 深度接口测试（DAG 编排 + 四层断言 + 负例 + 契约漂移 + 零污染）
 npx @agile-team/wl-skills-test run-api --contract ./wl-contract.json --base-url http://localhost:8080
 
 # 执行 Playwright 自动化测试
@@ -164,6 +164,38 @@ npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --type jmet
 | kit | `page-spec.json` | 页面 CRUD 推断 + Playwright 选择器 |
 
 > **生成即合规**：所有生成物均通过自家 T1-T20 审计（含 CSV 参数化、SLA 断言、`__P` 属性化线程参数），由 `test/self-consistency.test.js` 回归保证。
+
+---
+
+## 🧪 深度接口测试（v0.9.0）
+
+```bash
+npx @agile-team/wl-skills-test run-api --contract ./wl-contract.json \
+  --base-url http://sit.example.com --token "$TOKEN" \
+  --token-no-perm "$NO_PERM_TOKEN" --dict-file ./dict.json
+```
+
+**执行链路（DAG，前置失败级联 skip 并标注原因）**：
+
+```
+列表冒烟 → 新增 → 写后读回比对 → 更新 → 详情 → 负例(必填缺失/类型错误/超长越界)
+→ 重复提交(拒绝或幂等) → 权限拒绝(读探针/写探针) → 分页边界 → 清理 → 零污染复查
+```
+
+**每步四层断言**：
+
+| 层 | 断言内容 | 防什么 |
+|----|---------|--------|
+| L1 | 成功信封（HTTP + 契约 successCode） | 接口挂了/业务失败 |
+| L2 | 结构（records/total/契约字段存在且类型匹配） | 响应结构漂移 |
+| L3 | 数据正确性（写后读回逐字段比对、清理后无残留） | 假成功（成功码但没写对/没写进去） |
+| L4 | 负例与安全（必填/类型/超长必须被拒、重复提交、权限拒绝） | 后端校验缺口、越权 |
+
+**契约漂移检测**：响应实际字段 vs 契约 models 全量 diff（契约声明但缺失 / 响应未声明 / 类型不符）——后端改了字段而契约没跟上，第一时间报出。
+
+**精准性保障**：网络错误/超时记 error 绝不判为"被拒绝"（负例不会因连不上而假通过）；负例用独立业务键（与正例的重复校验互不掩盖）；意外成功的负例自动登记清理（零污染兜底）；每步报文快照留证可回溯。
+
+**参数**：`--token-no-perm`（无权限账号，启用权限验证）· `--dict-file`（枚举字段真实合法值）· `--lenient-coercion`（后端隐式转换记 warn）· `--perm-write-probe`（写操作权限探针）· `--json`（供 quality-gate/report 消费）
 
 ---
 
@@ -326,7 +358,7 @@ wl-skills-test/
 | 性能基线 | 1 命令 | perf-compare 劣化判定（CI 非零退出） |
 | 报告聚合 | 1 命令 | report 对齐规范 10 模板 + 上线判定 |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元+集成测试 | 135 | 全部通过（含 CLI 集成/自一致性/MCP stdio/e2e-check/块级解析/工程强校验） |
+| 单元+集成测试 | 149 | 全部通过（含 mock 后端接口集成/CLI 集成/自一致性/MCP stdio/e2e-check） |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
@@ -348,7 +380,7 @@ wl-skills-test/
 | | E2E 工程脚手架 | ✅ | 完整 | run-gen --type e2e 三轮策略（只读冒烟/受控写入/恢复清理） |
 | | Playwright 脚本生成 | ✅ | 完整 | 从 page-spec/契约生成选择器+数据闭环 |
 | | JMeter 脚本生成 | ✅ | 完整 | 从契约 operations 生成，CSV 参数化 + SLA 断言 + __P 属性化 |
-| | API 接口测试执行 | ✅ | 完整 | run-api 从契约自动发起 HTTP 请求验证 + 冒烟报告 |
+| | API 接口测试执行 | ✅ | 完整 | run-api 深度测试：DAG 编排 + 四层断言（成功码/结构/写后读回/负例安全）+ 契约漂移 + 零污染 |
 | | Playwright 执行 | ✅ | 完整 | run-playwright 调用 `playwright test` + 解析结果 |
 | | JMeter 执行 | ✅ | 完整 | run-jmeter 调用 `jmeter -n -t` + 解析 jtl（P50/P95/P99/错误率） |
 | **审计** | 测试代码规范审计 | ✅ | 完整 | T1-T20 确定性扫描器（Playwright/JMeter/用例，跳过 node_modules，容错单文件） |
@@ -433,7 +465,8 @@ wl-skills-test/
 | v0.5.0 | 全部缺口清零：T1-T20 + F1-F6 + Playwright/JMeter 执行 + 质量门 4 指标 |
 | v0.6.0 | 精准健壮修复（6 P0 + 全量 P1）+ E2E 三轮策略固化 + 测试 90 个 |
 | v0.7.0 | 落地增强：批量 E2E（32 页面实测）+ 登录态自动化 + T3/T4 块级精确化 + 数据工厂 + 报告聚合 + 性能基线 + MCP resources + CI |
-| **v0.8.0** | **做深：7 层 project 编排 + 归属清单强校验（e2e-check）+ 路由映射 + 逐页深用例 + UI 契约拦截 + 隔离机制 + 证据附件 + 测试填充标准 + T21-T25，测试 135 个** |
+| v0.8.0 | 做深：7 层 project 编排 + 归属清单强校验（e2e-check）+ 路由映射 + 逐页深用例 + UI 契约拦截 + 隔离机制 + 证据附件 + 测试填充标准 + T21-T25 |
+| **v0.9.0** | **接口测试做扎实：DAG 编排 + 四层断言 + 负例执行 + 契约漂移检测 + 权限双账号 + 网络错误防假通过，测试 149 个** |
 
 ---
 
