@@ -186,7 +186,7 @@ test("e2e-generator: 目录批量扫描 page-spec 生成多页面清单", () => 
   }
 });
 
-test("e2e-generator: 生成 auth-setup 登录态 spec 与四 project 配置", () => {
+test("e2e-generator: 生成 auth-setup 登录态 spec 与 project 配置", () => {
   mkdirSync(TMP, { recursive: true });
   const spec = join(TMP, "spec.json");
   writeFileSync(spec, JSON.stringify(SAMPLE_PAGE_SPEC));
@@ -194,11 +194,165 @@ test("e2e-generator: 生成 auth-setup 登录态 spec 与四 project 配置", ()
   try {
     generateE2eScaffold(spec, { outputDir: outDir });
     const auth = readFileSync(join(outDir, "tests", "auth-setup.spec.js"), "utf-8");
-    assert.ok(auth.includes("E2E_LOGIN_USER"), "应支持环境变量驱动登录");
+    assert.ok(auth.includes("E2E_LOGIN_USER"), "应支持自动登录");
+    assert.ok(auth.includes("人工模式"), "应默认人工模式（兼容验证码/SSO）");
     assert.ok(auth.includes("storageState"), "应保存 storageState");
     const config = readFileSync(join(outDir, "playwright.config.js"), "utf-8");
-    assert.ok(config.includes("auth-setup"), "config 应含 auth-setup project");
-    assert.ok(config.includes("storedAuth"), "config 应复用已存在的登录态");
+    assert.ok(config.includes("assertE2ESpecCatalog"), "config 加载应执行归属清单强校验");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+// ── v0.8.0: 路由映射 / 归属清单 / 深度用例 / 隔离 / UI 契约 ──
+
+const DEEP_PAGE_SPEC = {
+  schemaVersion: 1,
+  pageId: "PLBD001",
+  page: "基础资料维护",
+  dir: "src/views/produce/steelmaking/base-data/master",
+  mode: "LIST",
+  query: [{ name: "material_name", label: "料名" }],
+  columns: [
+    { name: "material_id", label: "料号" },
+    { name: "material_name", label: "料名" },
+    { name: "plant_code", label: "工厂", dict: "pl_plant_code" },
+  ],
+  toolbar: [{ label: "新增", color: "primary" }, { label: "删除", color: "danger" }],
+  operations: [],
+  formSections: [{ name: "basic", label: "基本信息", fields: [{ name: "material_id", required: true, label: "料号" }] }],
+};
+
+test("e2e-generator: routes.json 映射优先于 dir 推导，双向校验", () => {
+  mkdirSync(TMP, { recursive: true });
+  const dir = join(TMP, "specs");
+  mkdirSync(join(dir, "a"), { recursive: true });
+  writeFileSync(join(dir, "a", "page-spec.json"), JSON.stringify(DEEP_PAGE_SPEC));
+  const routesFile = join(TMP, "routes.json");
+  writeFileSync(routesFile, JSON.stringify({ PLBD001: "/lgBaseData/lgBaseDataMaster" }));
+  const outDir = join(TMP, "e2e");
+  try {
+    const result = generateE2eScaffold(dir, { outputDir: outDir, routes: routesFile });
+    assert.equal(result.pages[0].route, "/lgBaseData/lgBaseDataMaster", "应命中真实路由映射");
+    assert.equal(result.pages[0].routeSource, "map");
+    assert.equal(result.warnings.length, 0, "全映射后无 derived 告警");
+    const pages = readFileSync(join(outDir, "fixtures", "pages.js"), "utf-8");
+    assert.ok(pages.includes("/lgBaseData/lgBaseDataMaster"));
+    assert.ok(pages.includes('"map"'));
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: routes.json 缺页/多页 → 双向校验失败", () => {
+  mkdirSync(TMP, { recursive: true });
+  const dir = join(TMP, "specs");
+  mkdirSync(join(dir, "a"), { recursive: true });
+  writeFileSync(join(dir, "a", "page-spec.json"), JSON.stringify(DEEP_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    // 缺 PLBD001 映射 + 多余 PL999
+    const badRoutes = join(TMP, "routes.json");
+    writeFileSync(badRoutes, JSON.stringify({ PL999: "/x" }));
+    assert.throws(() => generateE2eScaffold(dir, { outputDir: outDir, routes: badRoutes }), /缺少映射|不一致/);
+    // 多余键
+    const extraRoutes = join(TMP, "routes2.json");
+    writeFileSync(extraRoutes, JSON.stringify({ PLBD001: "/a", PL999: "/x" }));
+    assert.throws(() => generateE2eScaffold(dir, { outputDir: outDir, routes: extraRoutes }), /多余映射/);
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: 生成 suites.js 归属清单且强校验真实执行通过", async () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  writeFileSync(spec, JSON.stringify(SAMPLE_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const suites = readFileSync(join(outDir, "fixtures", "suites.js"), "utf-8");
+    assert.ok(suites.includes("assertE2ESpecCatalog"), "应导出强校验函数");
+    assert.ok(suites.includes("QUARANTINED_FLOW_SPECS"), "应含隔离组清单");
+
+    // 真实执行：干净 → 通过；未归类文件 → 拒绝
+    const { pathToFileURL } = await import("node:url");
+    const mod = await import(pathToFileURL(join(outDir, "fixtures", "suites.js")).href);
+    mod.assertE2ESpecCatalog(join(outDir, "tests"));
+    writeFileSync(join(outDir, "tests", "orphan.spec.js"), 'import { test } from "@playwright/test";\ntest("验证孤儿", () => {});\n');
+    assert.throws(() => mod.assertE2ESpecCatalog(join(outDir, "tests")), /未归类/);
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: 生成深度用例（搜索收敛/重置/字典翻译）", () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  writeFileSync(spec, JSON.stringify(DEEP_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const detail = readFileSync(join(outDir, "tests", "round1-detail.spec.js"), "utf-8");
+    assert.ok(detail.includes("验证搜索收敛并重置恢复"), "应生成搜索收敛/重置闭环用例");
+    assert.ok(detail.includes("验证字典列翻译为中文"), "应生成字典翻译断言");
+    assert.ok(detail.includes("验证列头按规范渲染"), "应生成列头断言");
+    assert.ok(detail.includes("col-id"), "应支持 AG Grid 列级定位");
+    assert.ok(detail.includes("test.skip(true,"), "SIT 无数据应优雅 skip");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: 生成 ui-contract 拦截与 quarantine 隔离 spec", () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  writeFileSync(spec, JSON.stringify(REAL_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const uiContract = readFileSync(join(outDir, "tests", "ui-contract.spec.js"), "utf-8");
+    assert.ok(uiContract.includes("page.route("), "必须使用 page.route 拦截");
+    assert.ok(uiContract.includes("wl-test-fill"), "应优先识别测试填充钩子");
+    assert.ok(uiContract.includes("postDataJSON"), "应断言 payload 契约");
+
+    const quarantine = readFileSync(join(outDir, "tests", "quarantine.spec.js"), "utf-8");
+    assert.ok(/test\.skip\(\s*["'`]B\d+/.test(quarantine), "隔离组必须显式 test.skip B 组");
+    assert.ok(quarantine.includes("隔离准入判断"), "应声明隔离准则");
+    assert.ok(quarantine.includes("requireWriteApproval"), "解除隔离后仍需写入门禁");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: 生成 package.json scripts（type module + 7 project 一键化）", () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  writeFileSync(spec, JSON.stringify(SAMPLE_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const pkg = JSON.parse(readFileSync(join(outDir, "package.json"), "utf-8"));
+    assert.equal(pkg.type, "module");
+    for (const s of ["e2e:auth", "e2e", "e2e:detail", "e2e:ui-contract", "e2e:round2", "e2e:quarantine:list", "e2e:cleanup", "e2e:report"]) {
+      assert.ok(pkg.scripts[s], `应含 ${s} 脚本`);
+    }
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: features.testFill 时 round2 接入填充钩子", () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  const withFill = { ...REAL_PAGE_SPEC, features: { testFill: true } };
+  writeFileSync(spec, JSON.stringify(withFill));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const round2 = readFileSync(join(outDir, "tests", "round2-write.spec.js"), "utf-8");
+    assert.ok(round2.includes("wl-test-fill"), "应点击填充钩子");
+    assert.ok(round2.includes("受控写入(UI)"), "有表单应为 UI 级");
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }

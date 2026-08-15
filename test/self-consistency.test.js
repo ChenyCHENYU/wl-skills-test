@@ -211,10 +211,60 @@ test.only(\`验证模板名\${id}\`, () => {});`;
 });
 
 test("T3 块级: audit 端到端 — expect.soft 也计为断言", () => {
-  const content = `import { test, expect } from "@playwright/test";
-test("验证软断言", async ({ page }) => {
-  await expect.soft(page.locator("a")).toBeVisible();
-});`;
+  const content = `import { test, expect } from "@playwright/test";\ntest("验证软断言", async ({ page }) => {\n  await expect.soft(page.locator("a")).toBeVisible();\n});`;
   const blocks = parseTestBlocks(content);
   assert.equal(blocks[0].hasExpect, true);
+});
+
+// ── v0.8.0: T21-T25 E2E 工程级规则 ──
+
+function auditSnippet(name, content) {
+  mkdirSync(TMP, { recursive: true });
+  const p = join(TMP, name);
+  writeFileSync(p, content);
+  try {
+    return audit(p);
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+}
+
+const PW_HEAD = `import { test, expect } from "@playwright/test";\ntest.beforeEach(() => {});\ntest.afterEach(() => {});\n`;
+
+test("T21: test.only 被检出", () => {
+  const r = auditSnippet("x.spec.js", PW_HEAD + `test.only("验证a", async ({ page }) => {\n  await expect(page.locator("a")).toBeVisible();\n});\n`);
+  assert.ok(r.findings.some((f) => f.rule === "T21"));
+});
+
+test("T22: 写入 spec 缺安全标记被检出", () => {
+  const content = PW_HEAD + `import { RunLedger } from "./ledger.js";\ntest("新增数据落库", async ({ page }) => {\n  const ledger = new RunLedger();\n  await expect(page.locator("a")).toBeVisible();\n});\n`;
+  const r = auditSnippet("round2-write.spec.js", content);
+  const t22 = r.findings.find((f) => f.rule === "T22");
+  assert.ok(t22, "应触发 T22");
+  assert.ok(t22.message.includes("requireWriteApproval"));
+});
+
+test("T23: Bearer 前缀截断被检出（fatal）", () => {
+  const content = PW_HEAD + `test("验证清理", async ({ page }) => {\n  const token = auth.substring(7);\n  await expect(page.locator("a")).toBeVisible();\n});\n`;
+  const r = auditSnippet("cleanup2.spec.js", content);
+  const t23 = r.findings.find((f) => f.rule === "T23");
+  assert.ok(t23, "应触发 T23");
+  assert.equal(t23.severity, "fatal");
+});
+
+test("T24: 隔离 spec 声明漂移两个方向都被检出", () => {
+  // 有未 skip 的 B 组
+  const bad1 = PW_HEAD + `test("B1 下达流程", async ({ page }) => {\n  await expect(page.locator("a")).toBeVisible();\n});\n`;
+  const r1 = auditSnippet("quarantine.spec.js", bad1);
+  assert.ok(r1.findings.some((f) => f.rule === "T24" && f.message.includes("未 skip")));
+  // 缺 skip 声明
+  const bad2 = PW_HEAD + `test("验证普通", async ({ page }) => {\n  await expect(page.locator("a")).toBeVisible();\n});\n`;
+  const r2 = auditSnippet("quarantine.spec.js", bad2);
+  assert.ok(r2.findings.some((f) => f.rule === "T24" && f.message.includes("漂移")));
+});
+
+test("T25: ui-contract spec 缺 page.route 被检出", () => {
+  const content = PW_HEAD + `test("验证新增请求", async ({ page }) => {\n  await expect(page.locator("a")).toBeVisible();\n});\n`;
+  const r = auditSnippet("ui-contract.spec.js", content);
+  assert.ok(r.findings.some((f) => f.rule === "T25"));
 });

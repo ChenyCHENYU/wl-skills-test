@@ -8,6 +8,46 @@
 
 ---
 
+## [0.8.0] — 2026-08-15（做深：全面对齐 wl-ui-produce e2e 工程化水平并模板化超越）
+
+> 对照 wl-ui-produce e2e（32 页面、suites 归属校验、工位契约、隔离机制、测试填充器）逐维度做深。
+> 真实项目复验：wl-ui-produce 32 页面目录 + 真实 routes.sit.json → 17 文件全部生成、路由全命中
+> （PLBD001 → /lgBaseData/lgBaseDataMaster）、语法全过、归属强校验 PASS、自审计 PASS。
+
+### Added — E2E 工程化做深（对标 wl-ui-produce 全部工程约束并模板化）
+
+- **7 层 project 编排**：auth-setup → round1-readonly → round1-detail → ui-contract → round2-write → quarantine → cleanup；A/B/C 风险分层。
+- **用例归属清单强校验**（fixtures/suites.js + playwright.config 加载即执行 assertE2ESpecCatalog）：未归类/重复归属/清单有但文件缺失/test.only/写入组缺安全标记/Bearer 截断/隔离声明漂移/UI 契约缺 page.route——任一命中拒绝运行，杜绝"文件写了但从未被执行"的假闭环；空清单组生成永不匹配正则（防 Playwright 空 testMatch 退化为全匹配）。
+- **显式路由映射**：`--routes routes.json`（pageId→路由）优先于 dir 推导；生成时双向一致性校验（missing/extra 即失败）；pages.js 标记 routeSource（spec/map/derived），derived 产出 warnings 提示人工核对——修复真实路由与目录无关（/lgBaseData/... ≠ src/views/base-data/...）导致的错误路由。
+- **登录双模式**：默认人工登录（兼容验证码/SSO/MFA，最长 4 分钟等待），配置 E2E_LOGIN_USER/PASSWORD 时自动填表。
+- **逐页深度用例**（round1-detail）：列头渲染断言（AG Grid col-id / el-table 表头 label）、搜索收敛（首行探针值→查询→结果收敛断言）、重置恢复（输入清空+行数恢复）、字典翻译（dict 列应显示中文而非原始编码，E2E_DICT_CJK_ONLY 可调）；SIT 无数据优雅 skip。
+- **UI 契约拦截**（ui-contract）：page.route 拦截全部写请求返回成功信封，断言端点+payload 契约——无安全测试数据/危险流程/任意环境均可跑；优先识别测试填充钩子。
+- **高风险隔离机制**（quarantine）：默认 test.skip B 组 + 隔离准入准则（共享状态/无专属数据/无可靠逆操作）+ 种子数据声明模板；解除需移出清单（否则加载即 fail）。
+- **证据附件**：monitor.assertClean(label, testInfo) 把观察到的全部业务响应（e2e-business-responses.json）与失败明细（e2e-failures.json）attach 进 HTML 报告；round2 保存主键信息附件。
+- **e2e/package.json**：type module + 全套 npm scripts（e2e:auth/e2e/e2e:detail/e2e:ui-contract/e2e:round2/e2e:quarantine:list/e2e:cleanup/e2e:report）。
+- **`e2e-check` 命令 + MCP `wls_test_e2e_check`（第 15 个工具）**：对任意 e2e 工程独立执行归属闭环+静态安全扫描（复用工程自身 assertE2ESpecCatalog 若存在），CI 非零退出。
+- **测试填充器标准**（references/test-fill-standard.md）：应用侧 dev/SIT 门禁 + 字典快照 + 上下文字段保护 + 强制人工核对 + `data-testid="wl-test-fill"`；page-spec 声明 `features.testFill: true` 后 round2/ui-contract 自动接入。
+
+### Added — 审计规则 T21-T25（E2E 工程级，源自 wl-ui-produce 实战约束）
+
+- T21（error）：test.only/describe.only 假闭环
+- T22（error）：受控写入 spec 缺安全标记（requireWriteApproval/new RunLedger/finally/cleanupLedger）
+- T23（fatal）：截断 Bearer 前缀（.slice("Bearer ".length)/.substring(7)）
+- T24（error）：隔离 spec 声明漂移（未 skip 的 B 组/缺 test.skip B 声明）
+- T25（error）：ui-contract spec 缺 page.route 拦截
+
+### Fixed
+
+- `run()` 非异步导致 CLI 引入即崩（e2e-check await）——bin 入口补异常兜底。
+- 生成物 TS 语法残留（`: Page`/`as const`）导致 .js 不可执行——全部纯 JS 化并有 node --check 级验证。
+- 无列信息的契约输入生成 suites 清单含不存在的 detail spec（"文件缺失"校验误报）——清单与实际生成联动 + 空组永不匹配。
+
+### Tests
+
+- 122 → **135 个**全部通过：新增 routes 映射双向校验(2)/归属清单真实执行(1)/深度用例(1)/隔离与契约(1)/scripts(1)/testFill(1)/T21-T25(5)/CLI e2e-check(1)。
+
+---
+
 ## [0.7.0] — 2026-08-15（落地增强：批量 E2E + 登录态自动化 + 断言精确化 + 数据工厂 + 报告聚合 + 性能基线）
 
 > 已用 wl-ui-produce 真实项目验证：32 个炼钢页面 page-spec 目录一键生成 12 文件脚手架，

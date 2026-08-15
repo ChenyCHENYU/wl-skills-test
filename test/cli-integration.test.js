@@ -108,18 +108,46 @@ test("CLI: run-gen --type e2e 生成脚手架", () => {
     assert.equal(r.status, 0, `stderr: ${r.stderr}`);
     for (const f of [
       "playwright.config.js",
+      "package.json",
+      "fixtures/pages.js",
+      "fixtures/suites.js",
       "support/environment.js",
       "support/network-monitor.js",
       "support/run-ledger.js",
       "support/api-probe.js",
       "support/cleanup.js",
+      "tests/auth-setup.spec.js",
       "tests/round1-readonly.spec.js",
+      "tests/ui-contract.spec.js",
       "tests/round2-write.spec.js",
+      "tests/quarantine.spec.js",
       "tests/cleanup.spec.js",
       "README.md",
     ]) {
       assert.ok(existsSync(join(outDir, f)), `应生成 ${f}`);
     }
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("CLI: e2e-check 对生成脚手架通过，注入 test.only 后拦截", async () => {
+  setupTmp();
+  const contract = join(TMP, "contract.json");
+  writeFileSync(contract, JSON.stringify(SAMPLE_CONTRACT));
+  const outDir = join(TMP, "e2e");
+  try {
+    runCli(["run-gen", "--contract", contract, "--type", "e2e", "--output", outDir]);
+    // 干净脚手架 → 通过（退出码 0）
+    const ok = runCli(["e2e-check", "--target", outDir]);
+    assert.equal(ok.status, 0, `stdout: ${ok.stdout}`);
+
+    // 注入 test.only → 拦截（退出码 1）
+    const spec = join(outDir, "tests", "round1-readonly.spec.js");
+    writeFileSync(spec, readFileSync(spec, "utf-8") + '\ntest.only("验证only假闭环", async () => {});\n', "utf-8");
+    const bad = runCli(["e2e-check", "--target", outDir]);
+    assert.notEqual(bad.status, 0);
+    assert.ok((bad.stdout + bad.stderr).includes("test.only"));
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }

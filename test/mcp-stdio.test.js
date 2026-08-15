@@ -85,10 +85,11 @@ test("MCP stdio: tools/list 返回全部工具", async () => {
   try {
     const res = await server.send("tools/list");
     const names = res.result.tools.map((t) => t.name);
-    assert.ok(names.length >= 14);
+    assert.ok(names.length >= 15);
     assert.ok(names.includes("wls_test_standards"));
     assert.ok(names.includes("wls_test_e2e_generate"));
     assert.ok(names.includes("wls_test_report_generate"));
+    assert.ok(names.includes("wls_test_e2e_check"));
   } finally {
     server.close();
   }

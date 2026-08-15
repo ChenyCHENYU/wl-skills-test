@@ -2,18 +2,18 @@
 
 <p align="center">
   <strong>测试工程 AI 技能包</strong><br>
-  11 条测试规范 · 12 个 AI Skill · 14 个 MCP 工具 · 契约驱动生成 · E2E 三轮策略 · 报告聚合 · 性能基线
+  11 条测试规范 · 12 个 AI Skill · 15 个 MCP 工具 · 契约驱动生成 · 深度 E2E 工程 · 报告聚合 · 性能基线
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.7.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.8.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-12-purple.svg" />
-  <img src="https://img.shields.io/badge/MCP-14-teal.svg" />
-  <img src="https://img.shields.io/badge/audit-T1--T20-red.svg" />
-  <img src="https://img.shields.io/badge/e2e-%E4%B8%89%E8%BD%AE%E7%AD%96%E7%95%A5-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-122%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/MCP-15-teal.svg" />
+  <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
+  <img src="https://img.shields.io/badge/e2e-7%E5%B1%82project-yellow.svg" />
+  <img src="https://img.shields.io/badge/tests-135%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -71,9 +71,12 @@ npx @agile-team/wl-skills-test run-jmeter --jmx ./perf-test.jmx --threads 200
 # 性能基线对比（劣化即非零退出，CI 卡门）
 npx @agile-team/wl-skills-test perf-compare --current ./jmeter-results/result.jtl --baseline ./baseline/result.jtl
 
-# 生成成熟 E2E 工程脚手架（三轮策略 + 网络监控 + 清理账本 + 写入门禁 + 登录态自动化）
+# 生成深度 E2E 工程脚手架（7 层 project + 归属清单强校验 + 路由映射 + UI 契约拦截 + 隔离机制）
 npx @agile-team/wl-skills-test run-gen --contract ./page-spec.json --type e2e --output ./e2e
-npx @agile-team/wl-skills-test run-gen --contract ./src/views --type e2e   # 目录批量扫描（真实项目 32 页面验证）
+npx @agile-team/wl-skills-test run-gen --contract ./src/views --type e2e --routes ./routes.sit.json  # 目录批量 + 显式路由映射
+
+# E2E 工程强校验（归属闭环/安全标记/隔离声明，CI 卡门）
+npx @agile-team/wl-skills-test e2e-check --target ./e2e
 
 # 聚合各执行结果生成测试报告（对齐规范 10，含上线判定）
 npx @agile-team/wl-skills-test report --api smoke.json --playwright playwright-result.json --defects defects.json --cases 150
@@ -164,40 +167,40 @@ npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --type jmet
 
 ---
 
-## 🎭 E2E 三轮策略（v0.6.0 引入，v0.7.0 落地增强，源自 wl-ui-produce 实战）
-
-把炼钢生产平台 32+ 页面 e2e 验证有效的模式固化为**一键生成**的工程脚手架：
+## 🎭 深度 E2E 工程（v0.6 引入，v0.7 落地，v0.8 做深——全面对齐并超越 wl-ui-produce 实战）
 
 ```bash
 # 单页面（page-spec / 契约）
 npx @agile-team/wl-skills-test run-gen --contract ./page-spec.json --type e2e --output ./e2e
 
-# 批量：目录递归扫描 page-spec.json（真实项目 32 页面验证通过）
-npx @agile-team/wl-skills-test run-gen --contract ./src/views --type e2e --output ./e2e
+# 批量：目录递归扫描 + 显式路由映射（真实项目 32 页面 + 真实路由验证通过）
+npx @agile-team/wl-skills-test run-gen --contract ./src/views --type e2e --routes ./e2e/fixtures/routes.sit.json
 ```
 
-生成 12 个文件（support 五模块 + fixtures/pages.js + 四个 spec + config + README）：
+生成 17 个文件，**7 层 project 编排**（A/B/C 风险分层 + 工程强校验）：
 
 ```
 e2e/
-├── playwright.config.js          # 四 project：auth-setup / round1-readonly / round2-write / cleanup
-├── fixtures/pages.js             # 页面清单（批量自动生成，路由从 page-spec dir 自动推导）
-├── support/
-│   ├── environment.js            # 写入门禁 + 登录态配置 + Authorization 捕获
-│   ├── network-monitor.js        # 五道硬门（防假通过）
-│   ├── run-ledger.js             # 清理账本（runId 业务键 + 主键归属校验 + 原子落盘）
-│   ├── api-probe.js              # API 探针（信封校验）
-│   └── cleanup.js                # 按账本逆序清理
+├── playwright.config.js          # 加载即执行 assertE2ESpecCatalog 强校验（防假闭环）
+├── package.json                  # npm run e2e / e2e:auth / e2e:detail / e2e:ui-contract / e2e:round2 / e2e:cleanup
+├── fixtures/
+│   ├── pages.js                  # 页面清单（routeSource 标记 spec/map/derived，derived 需人工核对）
+│   └── suites.js                 # 用例归属清单 + 加载期强校验
+├── support/                      # environment（门禁+登录配置）/ network-monitor（五硬门+证据附件）
+│                                 # / run-ledger / api-probe / cleanup
 └── tests/
-    ├── auth-setup.spec.js        # 登录态自动化（env 驱动自动登录生成 storageState）
-    ├── round1-readonly.spec.js   # 只读冒烟（批量循环页面 + 业务响应监控 + 写请求检测）
-    ├── round2-write.spec.js      # 受控写入（有表单→UI 级闭环；否则 API 级）
+    ├── auth-setup.spec.js        # 登录双模式：默认人工（验证码/SSO/MFA），配账号自动填
+    ├── round1-readonly.spec.js   # A组 冒烟（表格/空态 + 业务响应监控 + 写请求检测 + 证据附件）
+    ├── round1-detail.spec.js     # A组 深度（列头渲染/搜索收敛/重置恢复/字典翻译，SIT无数据优雅skip）
+    ├── ui-contract.spec.js       # 拦截模拟（page.route 断言端点+payload 契约，不落库，任何环境可跑）
+    ├── round2-write.spec.js      # B组 受控写入（UI级含test-fill钩子/API级，账本+真实落库校验+零污染）
+    ├── quarantine.spec.js        # 高风险隔离（test.skip B组 + 隔离准则声明，解除需移出清单）
     └── cleanup.spec.js           # 按账本恢复清理
 ```
 
-**登录态自动化**：`E2E_LOGIN_USER/PASSWORD` 配置后 `npx playwright test --project=auth-setup` 自动登录保存 storageState，其余 project 检测到即自动复用；未配置账号时优雅跳过。
+**超越 wl-ui-produce 之处**：生成器路线（对方 32 页全手写 ~2 万行）+ 工程强校验模板化 + `e2e-check` 可对任意 e2e 工程独立执行 + 审计规则 T21-T25 固化同样约束 + 测试填充器标准（`test-fill-standard.md`，`data-testid="wl-test-fill"`）。
 
-**ROUND2 双模式**：page-spec 提供表单必填字段 → UI 级闭环（点新增→按 label 填表→捕获保存响应真实主键→复用页面登录态做 API 落库校验→账本清理→零污染复查）；否则 API 级闭环。
+**工程强校验清单**（config 加载即 fail / `e2e-check` CI 卡门）：未归类 spec / 重复归属 / 清单有但文件缺失 / `test.only` / 写入组缺安全标记（requireWriteApproval、new RunLedger、finally、cleanupLedger）/ 截断 Bearer 前缀 / 隔离声明漂移 / UI 契约缺 `page.route`。
 
 **五道硬门（防假通过）**：
 
@@ -213,7 +216,7 @@ e2e/
 
 ---
 
-## 🔧 14 个 MCP 工具
+## 🔧 15 个 MCP 工具
 
 | 工具 | 用途 |
 |------|------|
@@ -224,13 +227,14 @@ e2e/
 | `wls_test_env_check` | 校验测试环境连通性 |
 | `wls_test_quality_analyze` | DI 缺陷指数质量评估 + 上线判定 |
 | `wls_test_jmeter_validate` | 校验 JMeter jmx 有效性 |
-| `wls_test_audit` | 审计测试代码（T1-T20 确定性规则） |
+| `wls_test_audit` | 审计测试代码（T1-T25 确定性规则） |
 | `wls_test_fix` | 自动修复反模式（默认预览，`confirm:true` 才写盘） |
 | `wls_test_run_api` | 执行 API 接口测试（契约驱动发请求） |
 | `wls_test_run_playwright` | 执行 Playwright 自动化测试 |
 | `wls_test_run_jmeter` | 执行 JMeter 性能测试 |
-| `wls_test_e2e_generate` | 生成 E2E 三轮策略脚手架（支持目录批量） |
+| `wls_test_e2e_generate` | 生成深度 E2E 工程脚手架（单页/目录批量/routes 映射） |
 | `wls_test_report_generate` | 聚合执行结果生成测试报告（含上线判定） |
+| `wls_test_e2e_check` | E2E 工程强校验（归属闭环/安全标记/隔离声明） |
 
 另将 11 条测试规范以 **MCP resources** 只读资源暴露（`wl-test://standards/*.md`），AI 编辑器按需读取。
 
@@ -312,17 +316,17 @@ wl-skills-test/
 |------|:----:|------|
 | 测试规范 | 11 | 对齐在线 QC 流程规范（另以 MCP resources 只读暴露） |
 | AI Skill | 12 | 功能链 9 + 性能链 3 |
-| MCP 工具 | 14 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
-| 审计规则 | 20 | T1-T20 确定性扫描器（T3/T4 块级精确解析） |
+| MCP 工具 | 15 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
+| 审计规则 | 25 | T1-T25 确定性扫描器（T3/T4 块级精确解析 + T21-T25 E2E 工程约束） |
 | 自动修复 | 6 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码/afterEach/测试名） |
 | 执行器 | 3 | run-api（HTTP）/ run-playwright / run-jmeter + jtl 解析 |
 | 契约格式 | 3 | wl-api-contract / wl-contract / page-spec（含目录批量） |
-| E2E 脚手架 | 12 文件 | 三轮策略 + 五道硬门 + 清理账本 + 写入门禁 + 登录态自动化 |
+| E2E 脚手架 | 17 文件 | 7 层 project + 归属清单强校验 + 路由映射 + UI 契约拦截 + 隔离机制 + 登录双模式 |
 | 数据工厂 | 1 模块 | 枚举/约束/类型/字段名语义驱动的合法测试值 |
 | 性能基线 | 1 命令 | perf-compare 劣化判定（CI 非零退出） |
 | 报告聚合 | 1 命令 | report 对齐规范 10 模板 + 上线判定 |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元+集成测试 | 122 | 全部通过（含 CLI 集成/自一致性/MCP stdio/quality-gate/块级解析） |
+| 单元+集成测试 | 135 | 全部通过（含 CLI 集成/自一致性/MCP stdio/e2e-check/块级解析/工程强校验） |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
@@ -371,7 +375,7 @@ wl-skills-test/
 | 规范审计引擎 | R1-R16 (AST) | B1-B29 | R001-R039 (39条) | **T1-T20** | ✅ 已补齐 |
 | 自动修复 | safe-fix (F1-F5) | code-fix-be (B3/B5) | fix (12条) | **F1-F6** | ✅ 已补齐 |
 | 质量门对象 | 源码本身 | 源码本身 | 源码本身 | **外部 DI + 内部审计** | ✅ 已增强 |
-| MCP 工具数 | 23 | 16 | 10 | **14** | 🟡 可继续扩展 |
+| MCP 工具数 | 23 | 16 | 10 | **15** | 🟡 可继续扩展 |
 | 确定性 vs AI 驱动 | 确定性 | 确定性 | 确定性 | **确定性+AI** | ✅ 已补齐 |
 | 执行能力 | ❌ | ❌ | ❌ | **API/UI/性能执行 ✅** | ✅ 领先 |
 
@@ -428,7 +432,8 @@ wl-skills-test/
 | v0.4.0 | 审计引擎 T1-T12 + 自动修复 F1-F3 + API 执行器 |
 | v0.5.0 | 全部缺口清零：T1-T20 + F1-F6 + Playwright/JMeter 执行 + 质量门 4 指标 |
 | v0.6.0 | 精准健壮修复（6 P0 + 全量 P1）+ E2E 三轮策略固化 + 测试 90 个 |
-| **v0.7.0** | **落地增强：批量 E2E（32 页面实测）+ 登录态自动化 + T3/T4 块级精确化 + 数据工厂 + 报告聚合 + 性能基线 + MCP resources + CI，测试 122 个** |
+| v0.7.0 | 落地增强：批量 E2E（32 页面实测）+ 登录态自动化 + T3/T4 块级精确化 + 数据工厂 + 报告聚合 + 性能基线 + MCP resources + CI |
+| **v0.8.0** | **做深：7 层 project 编排 + 归属清单强校验（e2e-check）+ 路由映射 + 逐页深用例 + UI 契约拦截 + 隔离机制 + 证据附件 + 测试填充标准 + T21-T25，测试 135 个** |
 
 ---
 

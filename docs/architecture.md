@@ -163,7 +163,7 @@ API 文档
 
 ---
 
-## 五、MCP 工具（14 个，全部实现）与资源
+## 五、MCP 工具（15 个，全部实现）与资源
 
 | 工具名 | 用途 |
 |--------|------|
@@ -188,24 +188,18 @@ stdio 实现要点：async handler 必须 await 后序列化（round-trip 测试
 
 ---
 
-## 六、E2E 三轮策略（v0.6.0 固化，v0.7.0 落地增强，源自 wl-ui-produce 实战）
+## 六、深度 E2E 工程（v0.6 固化，v0.7 落地，v0.8 做深——对齐并超越 wl-ui-produce）
 
 ```
-AUTH 登录态              ROUND1 只读冒烟(批量)        ROUND2 受控写入              CLEANUP 恢复清理
-E2E_LOGIN_USER/PW        fixtures/pages.js 清单       有表单→UI级闭环              显式指定账本
-自动登录→storageState     循环全部页面                  无表单→API级闭环             加载账本(校验 runId/主键归属)
-未配置→优雅跳过            ├ 登录态校验                  ├ 三重门禁确认               └ 逆序清理 pending
-                         ├ 表格/空态断言               ├ 契约必填字段/工厂 payload
-                         ├ 网络监控五硬门              ├ 新增返回真实主键
-                         │  ├ 必须观察到业务响应        ├ queryPage 真实落库校验
-                         │  ├ HTTP≥400/业务码≠成功     ├ 账本登记(runId 业务键)
-                         │  ├ console/pageerror       ├ UI级:捕获页面Authorization
-                         │  ├ 只读检测写请求           ├ finally 精确主键清理
-                         │  └ 登录页=失败              └ 清理后复查(零污染)
-                         └ 可写页面操作按钮可见
+AUTH 登录(双模式)      ROUND1 冒烟(批量)      ROUND1 深度(A组)         UI 契约(拦截)        ROUND2 受控写入(B组)     隔离(高风险B组)
+人工(验证码/SSO/MFA)    五硬门+证据附件         列头/搜索收敛/重置/字典    page.route 拦截       三重门禁                 共享状态/无专属数据/无逆操作
+或账号自动填            只读写请求检测          SIT无数据优雅skip        断言端点+payload       UI级(test-fill)/API级     test.skip B组+准则声明
+                                              (AG col-id/el-table)    任何环境可跑           账本+落库校验+零污染       解除需移出清单
+                                                                                             ↓
+                                                                       CLEANUP 按账本恢复清理（校验 runId/主键归属）
 ```
 
-脚手架由 `lib/e2e-generator.js` 生成（`run-gen --type e2e` / MCP `wls_test_e2e_generate`），支持单文件/目录批量/manifest 三种输入；路由从 page-spec 的 dir 自动推导（`src/views/...` → `/...`），CRUD 操作从行内 operations 与 toolbar 双源推断。生成物通过自家 T1-T20 审计（`test/self-consistency.test.js` 回归保证），并已在 wl-ui-produce 真实项目验证（32 页面）。方法论沉淀在 `files/.github/skills/exec/test-script-generator/references/e2e-rounds-pattern.md`。
+工程强校验双通道（防假闭环）：`fixtures/suites.js#assertE2ESpecCatalog` 在 playwright.config 加载期执行；`wl-skills-test e2e-check` / MCP `wls_test_e2e_check` 可对任意 e2e 工程独立执行（归属闭环 + test.only + 写入安全标记 + Bearer 截断 + 隔离漂移 + 拦截声明）。路由三源（spec.route > routes.json 映射 > dir 推导），映射与清单双向校验，pages.js 标记 routeSource。方法论沉淀：`references/e2e-rounds-pattern.md`（A/B/C 编号体系、隔离准入、种子声明）+ `references/test-fill-standard.md`（应用侧受控填充钩子标准）。已在 wl-ui-produce 真实项目验证（32 页面 + 真实路由全命中）。
 
 ---
 

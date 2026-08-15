@@ -182,6 +182,16 @@ export const TOOL_DESCRIPTORS = [
       },
     },
   },
+  {
+    name: "wls_test_e2e_check",
+    description: "E2E 工程强校验：用例归属闭环 / test.only / 写入组安全标记 / Bearer 截断 / 隔离声明漂移 / UI 契约拦截声明（源自 wl-ui-produce 实战约束）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target: { type: "string", description: "E2E 工程根目录（含 tests/，默认 ./e2e）" },
+      },
+    },
+  },
 ];
 
 export function getToolCount() {
