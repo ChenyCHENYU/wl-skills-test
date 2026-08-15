@@ -2,18 +2,18 @@
 
 <p align="center">
   <strong>测试工程 AI 技能包</strong><br>
-  11 条测试规范 · 12 个 AI Skill · 13 个 MCP 工具 · 契约驱动生成 · E2E 三轮策略
+  11 条测试规范 · 12 个 AI Skill · 14 个 MCP 工具 · 契约驱动生成 · E2E 三轮策略 · 报告聚合 · 性能基线
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.6.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.7.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-12-purple.svg" />
-  <img src="https://img.shields.io/badge/MCP-13-teal.svg" />
+  <img src="https://img.shields.io/badge/MCP-14-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T20-red.svg" />
   <img src="https://img.shields.io/badge/e2e-%E4%B8%89%E8%BD%AE%E7%AD%96%E7%95%A5-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-90%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/tests-122%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -68,8 +68,15 @@ npx @agile-team/wl-skills-test run-playwright --test-dir ./tests/
 # 执行 JMeter 性能测试（-Jthreads 运行时生效）
 npx @agile-team/wl-skills-test run-jmeter --jmx ./perf-test.jmx --threads 200
 
-# 生成成熟 E2E 工程脚手架（三轮策略 + 网络监控 + 清理账本 + 写入门禁）
+# 性能基线对比（劣化即非零退出，CI 卡门）
+npx @agile-team/wl-skills-test perf-compare --current ./jmeter-results/result.jtl --baseline ./baseline/result.jtl
+
+# 生成成熟 E2E 工程脚手架（三轮策略 + 网络监控 + 清理账本 + 写入门禁 + 登录态自动化）
 npx @agile-team/wl-skills-test run-gen --contract ./page-spec.json --type e2e --output ./e2e
+npx @agile-team/wl-skills-test run-gen --contract ./src/views --type e2e   # 目录批量扫描（真实项目 32 页面验证）
+
+# 聚合各执行结果生成测试报告（对齐规范 10，含上线判定）
+npx @agile-team/wl-skills-test report --api smoke.json --playwright playwright-result.json --defects defects.json --cases 150
 ```
 
 安装后，AI 编辑器自动识别 `.github/skills/` 下的 12 个 Skill 和 `.github/standards/` 下的 11 条规范。
@@ -157,30 +164,40 @@ npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --type jmet
 
 ---
 
-## 🎭 E2E 三轮策略（v0.6.0 新增，源自 wl-ui-produce 实战）
+## 🎭 E2E 三轮策略（v0.6.0 引入，v0.7.0 落地增强，源自 wl-ui-produce 实战）
 
 把炼钢生产平台 32+ 页面 e2e 验证有效的模式固化为**一键生成**的工程脚手架：
 
 ```bash
+# 单页面（page-spec / 契约）
 npx @agile-team/wl-skills-test run-gen --contract ./page-spec.json --type e2e --output ./e2e
+
+# 批量：目录递归扫描 page-spec.json（真实项目 32 页面验证通过）
+npx @agile-team/wl-skills-test run-gen --contract ./src/views --type e2e --output ./e2e
 ```
 
-生成 10 个文件（support 五模块 + 三个 spec + config + README）：
+生成 12 个文件（support 五模块 + fixtures/pages.js + 四个 spec + config + README）：
 
 ```
 e2e/
-├── playwright.config.js          # 三 project：round1-readonly / round2-write / cleanup
+├── playwright.config.js          # 四 project：auth-setup / round1-readonly / round2-write / cleanup
+├── fixtures/pages.js             # 页面清单（批量自动生成，路由从 page-spec dir 自动推导）
 ├── support/
-│   ├── environment.js            # 写入门禁（ENABLE_WRITE + CONFIRM + 主机白名单）
+│   ├── environment.js            # 写入门禁 + 登录态配置 + Authorization 捕获
 │   ├── network-monitor.js        # 五道硬门（防假通过）
 │   ├── run-ledger.js             # 清理账本（runId 业务键 + 主键归属校验 + 原子落盘）
 │   ├── api-probe.js              # API 探针（信封校验）
 │   └── cleanup.js                # 按账本逆序清理
 └── tests/
-    ├── round1-readonly.spec.js   # 只读冒烟（表格/空态 + 业务响应监控 + 写请求检测）
-    ├── round2-write.spec.js      # 受控写入（新增→真实落库校验→账本→清理→零污染复查）
+    ├── auth-setup.spec.js        # 登录态自动化（env 驱动自动登录生成 storageState）
+    ├── round1-readonly.spec.js   # 只读冒烟（批量循环页面 + 业务响应监控 + 写请求检测）
+    ├── round2-write.spec.js      # 受控写入（有表单→UI 级闭环；否则 API 级）
     └── cleanup.spec.js           # 按账本恢复清理
 ```
+
+**登录态自动化**：`E2E_LOGIN_USER/PASSWORD` 配置后 `npx playwright test --project=auth-setup` 自动登录保存 storageState，其余 project 检测到即自动复用；未配置账号时优雅跳过。
+
+**ROUND2 双模式**：page-spec 提供表单必填字段 → UI 级闭环（点新增→按 label 填表→捕获保存响应真实主键→复用页面登录态做 API 落库校验→账本清理→零污染复查）；否则 API 级闭环。
 
 **五道硬门（防假通过）**：
 
@@ -196,7 +213,7 @@ e2e/
 
 ---
 
-## 🔧 13 个 MCP 工具
+## 🔧 14 个 MCP 工具
 
 | 工具 | 用途 |
 |------|------|
@@ -212,7 +229,10 @@ e2e/
 | `wls_test_run_api` | 执行 API 接口测试（契约驱动发请求） |
 | `wls_test_run_playwright` | 执行 Playwright 自动化测试 |
 | `wls_test_run_jmeter` | 执行 JMeter 性能测试 |
-| `wls_test_e2e_generate` | 生成 E2E 三轮策略脚手架 |
+| `wls_test_e2e_generate` | 生成 E2E 三轮策略脚手架（支持目录批量） |
+| `wls_test_report_generate` | 聚合执行结果生成测试报告（含上线判定） |
+
+另将 11 条测试规范以 **MCP resources** 只读资源暴露（`wl-test://standards/*.md`），AI 编辑器按需读取。
 
 MCP server 通过 stdio 运行（零依赖 JSON-RPC）：
 
@@ -251,24 +271,27 @@ node node_modules/@agile-team/wl-skills-test/scripts/quality-gate.js \
 
 ```
 wl-skills-test/
-├── bin/wl-skills-test.js          # CLI 入口（init/update/doctor/validate/run-gen/audit/fix/run-api/run-playwright/run-jmeter/clean/--mcp）
+├── bin/wl-skills-test.js          # CLI 入口（init/update/doctor/validate/run-gen/audit/fix/run-api/run-playwright/run-jmeter/perf-compare/report/clean/--mcp）
 ├── lib/
 │   ├── index.js                   # 命令路由 + 参数解析 + CI 退出码
-│   ├── contract-consumer.js       # 契约消费（kit/bd/page-spec 三格式）
+│   ├── contract-consumer.js       # 契约消费（kit/bd/page-spec 三格式 + 路由推导 + toolbar 操作推断）
 │   ├── test-codegen.js            # 用例生成 + DI + 冒烟 + Markdown
+│   ├── test-data-factory.js       # 测试数据工厂（枚举/约束/类型/字段名语义）
 │   ├── playwright-generator.js    # Playwright 脚本生成
 │   ├── jmeter-generator.js        # JMeter jmx 生成（CSV 参数化 + SLA 断言 + __P 属性化）
-│   ├── e2e-generator.js           # E2E 三轮策略脚手架生成（v0.6.0）
-│   ├── api-executor.js            # API 执行器（真实主键替换 + 合法 payload + 零污染清理）
-│   ├── executors.js               # Playwright/JMeter 执行器 + jtl 解析
+│   ├── e2e-generator.js           # E2E 三轮策略脚手架（批量 + 登录态 + UI/API 双模式 round2）
+│   ├── api-executor.js            # API 执行器（真实主键替换 + 工厂 payload + 零污染清理）
+│   ├── executors.js               # Playwright/JMeter 执行器 + jtl 解析（引号感知）
+│   ├── perf-compare.js            # 性能基线对比（劣化判定）
+│   ├── report-generator.js        # 测试报告聚合（规范 10 模板 + 上线判定）
 │   ├── write-guard.js             # 安全写链（哈希确认 + 回滚）
 │   ├── plan-hash.js               # 计划哈希
 │   └── templates/                 # 输出模板（5 个）
 ├── mcp/
-│   ├── index.js                   # stdio MCP server（零依赖 JSON-RPC，含 ping）
+│   ├── index.js                   # stdio MCP server（零依赖 JSON-RPC，含 ping + resources）
 │   ├── server.js                  # MCP server 工厂
-│   ├── registry.js                # 13 个工具注册表
-│   └── tools/handlers.js          # 13 个工具实现
+│   ├── registry.js                # 14 个工具注册表
+│   └── tools/handlers.js          # 14 个工具实现 + standards 资源
 ├── scripts/
 │   └── quality-gate.js            # DI 质量门 CI 脚本（fail-closed）
 ├── files/                         # 安装到用户项目的内容
@@ -276,8 +299,9 @@ wl-skills-test/
 │   ├── .github/skills/            # 12 个 Skill（5 组）
 │   ├── .mcp.json                  # MCP 配置
 │   └── 9 个编辑器适配文件
+├── .github/workflows/ci.yml       # 包自身 CI（双 OS × Node 20/22 + npm pack 校验 + 自动发布）
 ├── docs/                          # 架构设计 + 分析文档
-└── test/                          # 90 个测试（单元 + CLI 集成 + 自一致性 + MCP stdio）
+└── test/                          # 122 个测试（单元 + CLI 集成 + 自一致性 + MCP stdio + 块级解析）
 ```
 
 ---
@@ -286,16 +310,19 @@ wl-skills-test/
 
 | 维度 | 数量 | 说明 |
 |------|:----:|------|
-| 测试规范 | 11 | 对齐在线 QC 流程规范 |
+| 测试规范 | 11 | 对齐在线 QC 流程规范（另以 MCP resources 只读暴露） |
 | AI Skill | 12 | 功能链 9 + 性能链 3 |
-| MCP 工具 | 13 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip） |
-| 审计规则 | 20 | T1-T20 确定性扫描器（Playwright/JMeter/用例/覆盖率） |
+| MCP 工具 | 14 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
+| 审计规则 | 20 | T1-T20 确定性扫描器（T3/T4 块级精确解析） |
 | 自动修复 | 6 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码/afterEach/测试名） |
 | 执行器 | 3 | run-api（HTTP）/ run-playwright / run-jmeter + jtl 解析 |
-| 契约格式 | 3 | wl-api-contract / wl-contract / page-spec |
-| E2E 脚手架 | 10 文件 | 三轮策略 + 五道硬门 + 清理账本 + 写入门禁 |
+| 契约格式 | 3 | wl-api-contract / wl-contract / page-spec（含目录批量） |
+| E2E 脚手架 | 12 文件 | 三轮策略 + 五道硬门 + 清理账本 + 写入门禁 + 登录态自动化 |
+| 数据工厂 | 1 模块 | 枚举/约束/类型/字段名语义驱动的合法测试值 |
+| 性能基线 | 1 命令 | perf-compare 劣化判定（CI 非零退出） |
+| 报告聚合 | 1 命令 | report 对齐规范 10 模板 + 上线判定 |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元+集成测试 | 90 | 全部通过（含 CLI 集成/自一致性/MCP stdio/quality-gate） |
+| 单元+集成测试 | 122 | 全部通过（含 CLI 集成/自一致性/MCP stdio/quality-gate/块级解析） |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
@@ -344,7 +371,7 @@ wl-skills-test/
 | 规范审计引擎 | R1-R16 (AST) | B1-B29 | R001-R039 (39条) | **T1-T20** | ✅ 已补齐 |
 | 自动修复 | safe-fix (F1-F5) | code-fix-be (B3/B5) | fix (12条) | **F1-F6** | ✅ 已补齐 |
 | 质量门对象 | 源码本身 | 源码本身 | 源码本身 | **外部 DI + 内部审计** | ✅ 已增强 |
-| MCP 工具数 | 23 | 16 | 10 | **13** | 🟡 可继续扩展 |
+| MCP 工具数 | 23 | 16 | 10 | **14** | 🟡 可继续扩展 |
 | 确定性 vs AI 驱动 | 确定性 | 确定性 | 确定性 | **确定性+AI** | ✅ 已补齐 |
 | 执行能力 | ❌ | ❌ | ❌ | **API/UI/性能执行 ✅** | ✅ 领先 |
 
@@ -400,7 +427,8 @@ wl-skills-test/
 | v0.3.2 | arg parser 强化 + 版本占位符 + npm 发布 |
 | v0.4.0 | 审计引擎 T1-T12 + 自动修复 F1-F3 + API 执行器 |
 | v0.5.0 | 全部缺口清零：T1-T20 + F1-F6 + Playwright/JMeter 执行 + 质量门 4 指标 |
-| **v0.6.0** | **精准健壮修复（6 P0 + 全量 P1）+ E2E 三轮策略固化 + 测试 90 个** |
+| v0.6.0 | 精准健壮修复（6 P0 + 全量 P1）+ E2E 三轮策略固化 + 测试 90 个 |
+| **v0.7.0** | **落地增强：批量 E2E（32 页面实测）+ 登录态自动化 + T3/T4 块级精确化 + 数据工厂 + 报告聚合 + 性能基线 + MCP resources + CI，测试 122 个** |
 
 ---
 

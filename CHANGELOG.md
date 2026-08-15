@@ -8,6 +8,39 @@
 
 ---
 
+## [0.7.0] — 2026-08-15（落地增强：批量 E2E + 登录态自动化 + 断言精确化 + 数据工厂 + 报告聚合 + 性能基线）
+
+> 已用 wl-ui-produce 真实项目验证：32 个炼钢页面 page-spec 目录一键生成 12 文件脚手架，
+> 路由全部正确推导（src/views/... → /produce/...），生成物通过 T1-T20 自审计。
+
+### Added — E2E 落地能力
+
+- **批量多页面**：`run-gen --type e2e --contract <page-spec目录>` 递归扫描生成 `fixtures/pages.js` 清单，round1 循环全部页面（真实项目 32 页面验证通过）；支持 manifest JSON（`{pages:[...]}`）。
+- **路由自动推导**：真实 page-spec 的 `dir` 是文件系统路径（`src/views/produce/xxx`），自动推导为路由 `/produce/xxx`。
+- **登录态自动化**：新增 `auth-setup` project 与 `tests/auth-setup.spec.js`——配置 `E2E_LOGIN_USER/PASSWORD`（选择器可覆盖）自动登录生成 storageState，round1/round2/cleanup 检测到登录态文件自动复用。
+- **UI 级 round2**：page-spec 含表单必填字段时生成 UI 级受控写入闭环（点新增→按 label 填表→捕获保存响应真实主键→`captureAuthorizationHeader` 复用页面登录态做 API 落库校验→账本清理）；无表单时保持 API 级。
+- **toolbar 操作推断**：真实项目 CRUD 常在工具栏（勾选行后点修改/删除）而非行内 operations，契约消费现同时从 toolbar 推断 create/update/remove（用例矩阵同步增强）。
+
+### Added — 精准与度量
+
+- **断言精确化（T3/T4 块级解析）**：`parseTestBlocks()` 字符串/模板串/注释感知的轻量解析器，T3 精确到"每个 test 块至少一个 expect"（旧文件级计数在多块场景会漏判，实测抓出 playwright-generator 查询用例缺断言的真实缺陷并已修复），T4 不再误判字符串中的 `test(` 字样；支持 `test.skip/only/fixme` 与模板串名。
+- **测试数据工厂** `lib/test-data-factory.js`：enum > constraints > 类型 > 字段名语义（email/phone/idcard/status/remark...）的合法值生成，maxLength 截断、数值 min/max 夹取、编号字段生成含 runId 的唯一值（零污染识别）；run-api 的 create payload 升级为工厂驱动。
+- **报告聚合** `report` 子命令 + MCP `wls_test_report_generate`（第 14 个工具）：聚合 run-api/run-playwright/run-jmeter/DI 结果生成对齐规范 10 的测试报告，含上线判定（任一来源不达标即阻断，CI 非零退出）；`run-playwright` 现输出 JSON 结果供聚合消费。
+- **性能基线对比** `perf-compare` 子命令 + `lib/perf-compare.js`：当前 jtl/json vs 基线，P50/P95/P99 相对劣化超阈值（默认 15%）或错误率上升超 1pp 即判劣化（CI 非零退出），jtl 解析支持引号字段。
+- **MCP resources**：11 条测试规范以只读资源暴露（`wl-test://standards/01-xxx.md`），支持 `resources/list`/`resources/read`，AI 编辑器按需读取省 token。
+- **CI 工作流**：`.github/workflows/ci.yml`（双 OS × Node 20/22 矩阵跑全量测试 + `npm pack` 产物校验 + release 前缀自动发布）。
+
+### Fixed
+
+- T3 旧文件级计数漏判：multi-test 文件中 expect 集中在一个块时其余块缺断言不报——已由块级解析修复（并修复 playwright-generator 查询用例缺断言）。
+- `parseJtlResults` 未导出（perf-compare 复用）。
+
+### Tests
+
+- 90 → **122 个**全部通过：新增 data-factory(10) / perf-compare(5) / report-generator(5) / 块级解析回归(4) / e2e 批量+路由+UI round2+auth(4) / MCP resources(5-1 调整)。
+
+---
+
 ## [0.6.0] — 2026-08-15（精准健壮修复 + E2E 成熟能力固化）
 
 > 本次修复了 v0.5.0 全面分析发现的 6 个 P0 缺陷（其中 3 个导致核心命令崩溃）与一批 P1 健壮性问题，

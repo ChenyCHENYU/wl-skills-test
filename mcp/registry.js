@@ -160,11 +160,26 @@ export const TOOL_DESCRIPTORS = [
     inputSchema: {
       type: "object",
       properties: {
-        contractPath: { type: "string", description: "page-spec.json 或契约文件路径" },
+        contractPath: { type: "string", description: "page-spec.json / 契约文件 / page-spec 目录（批量）/ manifest JSON" },
         outputDir: { type: "string", description: "输出目录（默认 ./e2e）" },
         baseUrl: { type: "string", description: "被测系统基址" },
       },
       required: ["contractPath"],
+    },
+  },
+  {
+    name: "wls_test_report_generate",
+    description: "聚合 run-api/run-playwright/run-jmeter/DI 缺陷结果生成测试报告（对齐规范 10 模板，含上线判定）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        api: { type: "string", description: "run-api 输出的 JSON 文件路径" },
+        playwright: { type: "string", description: "run-playwright 输出的 JSON 文件路径" },
+        jmeter: { type: "string", description: "性能结果 JSON 文件路径" },
+        defects: { type: "string", description: "缺陷清单 JSON 文件路径" },
+        cases: { type: "number", description: "总用例数（DI 密度分母）" },
+        output: { type: "string", description: "报告输出路径（可选）" },
+      },
     },
   },
 ];

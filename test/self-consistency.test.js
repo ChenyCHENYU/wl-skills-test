@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { generateJmeterScript } from "../lib/jmeter-generator.js";
 import { generatePlaywrightScript } from "../lib/playwright-generator.js";
 import { generateE2eScaffold } from "../lib/e2e-generator.js";
-import { audit, checkSteppingThreadGroup } from "../lib/test-audit.js";
+import { audit, checkSteppingThreadGroup, parseTestBlocks } from "../lib/test-audit.js";
 import { HANDLERS } from "../mcp/tools/handlers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -169,4 +169,52 @@ test("XML 转义: 实体名含特殊字符生成合法 jmx", () => {
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }
+});
+
+// ── v0.7.0: T3/T4 块级精确解析回归 ──
+
+test("T3 块级: 多 test 但 expect 集中在一个块 → 精确指出缺断言的块", () => {
+  const content = `import { test, expect } from "@playwright/test";
+test("验证A", async ({ page }) => {
+  await expect(page.locator("a")).toBeVisible();
+  await expect(page.locator("b")).toBeVisible();
+});
+test("验证B", async ({ page }) => {
+  await page.click("button"); // 无断言
+});`;
+  const blocks = parseTestBlocks(content);
+  assert.equal(blocks.length, 2);
+  assert.equal(blocks[0].hasExpect, true);
+  assert.equal(blocks[1].hasExpect, false, "旧文件级计数 2 test vs 2 expect 会漏判，块级应抓到 B 无断言");
+});
+
+test("T3 块级: 字符串/注释中的 test( 字样不计数", () => {
+  const content = `import { test, expect } from "@playwright/test";
+// 这里注释了一个 test("假用例", ...)
+const help = '如何写 test("示例") 呢';
+test("验证真用例", async ({ page }) => {
+  await expect(page.locator("a")).toBeVisible();
+});`;
+  const blocks = parseTestBlocks(content);
+  assert.equal(blocks.length, 1, "注释和字符串里的 test( 不应被解析为用例");
+  assert.equal(blocks[0].name, "验证真用例");
+});
+
+test("T4 块级: test.skip/only 识别且模板串名解析", () => {
+  const content = `import { test } from "@playwright/test";
+test.skip("验证跳过", () => {});
+test.only(\`验证模板名\${id}\`, () => {});`;
+  const blocks = parseTestBlocks(content);
+  assert.equal(blocks.length, 2);
+  assert.equal(blocks[0].name, "验证跳过");
+  assert.ok(blocks[1].name.includes("验证模板名"));
+});
+
+test("T3 块级: audit 端到端 — expect.soft 也计为断言", () => {
+  const content = `import { test, expect } from "@playwright/test";
+test("验证软断言", async ({ page }) => {
+  await expect.soft(page.locator("a")).toBeVisible();
+});`;
+  const blocks = parseTestBlocks(content);
+  assert.equal(blocks[0].hasExpect, true);
 });

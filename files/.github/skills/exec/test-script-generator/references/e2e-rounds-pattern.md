@@ -2,6 +2,7 @@
 
 > 本参考文档把 wl-ui-produce（炼钢生产平台，32+ 页面 e2e）验证有效的模式固化为团队标准。
 > 配套脚手架一键生成：`npx @agile-team/wl-skills-test run-gen --contract ./page-spec.json --type e2e`
+> v0.7.0 增强：目录批量生成（`--contract ./src/views`）、登录态自动化（auth-setup）、UI 级受控写入、路由自动推导（`src/views/...` → `/...`）。
 
 ---
 
@@ -82,6 +83,12 @@ E2E_ALLOWED_WRITE_HOSTS=<目标主机>     # 主机白名单
 ```
 
 另需校验 API 基址路径只允许 dev/sit 网关，生产环境永远禁止。
+
+## 五½、登录态自动化（auth-setup，v0.7.0）
+
+- 配置 `E2E_LOGIN_USER / E2E_LOGIN_PASSWORD`（选择器可用 `E2E_LOGIN_USER_SELECTOR / E2E_LOGIN_PASSWORD_SELECTOR` 覆盖）后执行 `npx playwright test --project=auth-setup`，自动登录并保存 storageState 到 `.auth/user.json`
+- 其余 project 检测到登录态文件自动复用；未配置账号时优雅跳过（不失败）
+- UI 级 ROUND2 可通过 `captureAuthorizationHeader(page)` 从页面业务请求捕获完整 Authorization 头，复用浏览器登录态执行 API 校验与清理（无需单独配 E2E_TOKEN）
 
 ## 六、接口测试写到什么程度
 

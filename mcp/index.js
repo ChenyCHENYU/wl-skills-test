@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { TOOL_DESCRIPTORS } from "./registry.js";
-import { HANDLERS } from "./tools/handlers.js";
+import { HANDLERS, listStandardResources, readStandardResource } from "./tools/handlers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -43,7 +43,7 @@ rl.on("line", (line) => {
         id,
         result: {
           protocolVersion: PROTOCOL_VERSION,
-          capabilities: { tools: {} },
+          capabilities: { tools: {}, resources: {} },
           serverInfo: SERVER_INFO,
         },
       });
@@ -56,6 +56,33 @@ rl.on("line", (line) => {
     case "ping":
       send({ jsonrpc: "2.0", id, result: {} });
       break;
+
+    case "resources/list":
+      send({
+        jsonrpc: "2.0",
+        id,
+        result: { resources: listStandardResources() },
+      });
+      break;
+
+    case "resources/read": {
+      const uri = params?.uri || "";
+      const content = readStandardResource(uri);
+      if (content === null) {
+        send({
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32602, message: `Unknown resource: ${uri}` },
+        });
+      } else {
+        send({
+          jsonrpc: "2.0",
+          id,
+          result: { contents: [{ uri, text: content }] },
+        });
+      }
+      break;
+    }
 
     case "tools/list":
       send({

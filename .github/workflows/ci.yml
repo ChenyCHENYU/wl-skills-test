@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: 运行测试（90+ 单元/集成/自一致性/MCP stdio）
+        run: node --test test/index.test.js test/audit-and-executor.test.js test/mcp-and-generators.test.js test/executors-and-extended.test.js test/cli-integration.test.js test/quality-gate.test.js test/self-consistency.test.js test/mcp-stdio.test.js test/e2e-generator.test.js test/data-factory.test.js test/perf-compare.test.js test/report-generator.test.js
+      - name: npm pack 校验（发布产物完整性）
+        run: npm pack --dry-run
+
+  publish:
+    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'release')
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

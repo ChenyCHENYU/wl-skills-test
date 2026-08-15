@@ -163,7 +163,7 @@ API 文档
 
 ---
 
-## 五、MCP 工具（13 个，全部实现）
+## 五、MCP 工具（14 个，全部实现）与资源
 
 | 工具名 | 用途 |
 |--------|------|
@@ -174,34 +174,49 @@ API 文档
 | `wls_test_env_check` | 校验测试环境连通性（支持向上探测项目根） |
 | `wls_test_quality_analyze` | DI 质量评估+上线判定 |
 | `wls_test_jmeter_validate` | 校验 JMeter jmx 有效性 |
-| `wls_test_audit` | T1-T20 审计 |
+| `wls_test_audit` | T1-T20 审计（T3/T4 块级精确解析） |
 | `wls_test_fix` | F1-F6 修复（默认预览，confirm 写盘） |
-| `wls_test_run_api` | API 接口测试执行（异步，真实主键+零污染） |
+| `wls_test_run_api` | API 接口测试执行（异步，真实主键+数据工厂+零污染） |
 | `wls_test_run_playwright` | Playwright 执行 |
 | `wls_test_run_jmeter` | JMeter 执行 |
-| `wls_test_e2e_generate` | E2E 三轮策略脚手架生成（v0.6.0） |
+| `wls_test_e2e_generate` | E2E 三轮策略脚手架生成（单页/目录批量/manifest） |
+| `wls_test_report_generate` | 报告聚合（规范 10 模板 + 上线判定） |
 
-stdio 实现要点：async handler 必须 await 后序列化（v0.6.0 修复，round-trip 测试覆盖）；支持 `ping`；版本号读 package.json。
+另将 11 条规范暴露为 **MCP resources**（`wl-test://standards/*.md`，resources/list + resources/read）。
+
+stdio 实现要点：async handler 必须 await 后序列化（round-trip 测试覆盖）；支持 `ping`；版本号读 package.json。
 
 ---
 
-## 六、E2E 三轮策略（v0.6.0，源自 wl-ui-produce 实战）
+## 六、E2E 三轮策略（v0.6.0 固化，v0.7.0 落地增强，源自 wl-ui-produce 实战）
 
 ```
-ROUND1 只读冒烟          ROUND2 受控写入                CLEANUP 恢复清理
-打开页面                 三重门禁确认                    显式指定账本
- ├ 登录态校验             ├ ENABLE_WRITE=1               ├ 加载账本（校验 runId/主键归属）
- ├ 表格/空态断言          ├ WRITE_CONFIRM=确认串          └ 逆序清理 pending 记录
- ├ 网络监控五硬门         └ 主机白名单
- │  ├ 必须观察到业务响应   ├ 契约必填字段构造 payload
- │  ├ HTTP≥400/业务码≠成功 ├ 新增返回真实主键
- │  ├ console/pageerror   ├ queryPage 真实落库校验
- │  ├ 只读检测写请求       ├ 账本登记（runId 业务键）
- │  └ 登录页=失败          ├ finally 精确主键清理
- └ 可写页面操作按钮可见     └ 清理后复查（零污染）
+AUTH 登录态              ROUND1 只读冒烟(批量)        ROUND2 受控写入              CLEANUP 恢复清理
+E2E_LOGIN_USER/PW        fixtures/pages.js 清单       有表单→UI级闭环              显式指定账本
+自动登录→storageState     循环全部页面                  无表单→API级闭环             加载账本(校验 runId/主键归属)
+未配置→优雅跳过            ├ 登录态校验                  ├ 三重门禁确认               └ 逆序清理 pending
+                         ├ 表格/空态断言               ├ 契约必填字段/工厂 payload
+                         ├ 网络监控五硬门              ├ 新增返回真实主键
+                         │  ├ 必须观察到业务响应        ├ queryPage 真实落库校验
+                         │  ├ HTTP≥400/业务码≠成功     ├ 账本登记(runId 业务键)
+                         │  ├ console/pageerror       ├ UI级:捕获页面Authorization
+                         │  ├ 只读检测写请求           ├ finally 精确主键清理
+                         │  └ 登录页=失败              └ 清理后复查(零污染)
+                         └ 可写页面操作按钮可见
 ```
 
-脚手架由 `lib/e2e-generator.js` 生成（`run-gen --type e2e` / MCP `wls_test_e2e_generate`），生成物通过自家 T1-T20 审计（`test/self-consistency.test.js` 回归保证）。方法论沉淀在 `files/.github/skills/exec/test-script-generator/references/e2e-rounds-pattern.md`。
+脚手架由 `lib/e2e-generator.js` 生成（`run-gen --type e2e` / MCP `wls_test_e2e_generate`），支持单文件/目录批量/manifest 三种输入；路由从 page-spec 的 dir 自动推导（`src/views/...` → `/...`），CRUD 操作从行内 operations 与 toolbar 双源推断。生成物通过自家 T1-T20 审计（`test/self-consistency.test.js` 回归保证），并已在 wl-ui-produce 真实项目验证（32 页面）。方法论沉淀在 `files/.github/skills/exec/test-script-generator/references/e2e-rounds-pattern.md`。
+
+---
+
+## 七、度量闭环（v0.7.0）
+
+```
+run-api ──json──┐
+run-playwright ─json──┤→ report 子命令 → 测试报告.md（规范10模板 + 上线判定，CI 非零退出）
+run-jmeter ─json/jtl──┤                              ↑
+defects.json ────────┘                    perf-compare：当前 vs 基线（P50/95/99 劣化>阈值 或 错误率+1pp → 非零退出）
+```
 
 ---
 

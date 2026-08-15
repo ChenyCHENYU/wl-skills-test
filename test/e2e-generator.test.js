@@ -112,3 +112,94 @@ test("e2e-generator: 生成的 JS 文件不含 TypeScript 注解（可执行）"
     rmSync(TMP, { recursive: true, force: true });
   }
 });
+
+// ── v0.7.0: 批量模式 / 路由推导 / UI round2 / auth-setup ──
+
+const REAL_PAGE_SPEC = {
+  schemaVersion: 1,
+  pageId: "PLBD002",
+  page: "冶炼时间维护",
+  dir: "src/views/produce/steelmaking/base-data/smelting-time",
+  mode: "DETAIL_TABS",
+  query: [{ name: "factory", label: "工厂/组织" }],
+  columns: [{ name: "mc_code", label: "机台编码" }],
+  toolbar: [{ label: "新增", color: "primary" }, { label: "修改" }, { label: "删除", color: "danger" }],
+  operations: [],
+  formSections: [{ name: "basic", label: "基本信息", fields: [{ name: "mc_code", required: true, label: "机台编码" }] }],
+};
+
+test("e2e-generator: 真实 page-spec（dir 为文件系统路径）路由自动推导", () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  writeFileSync(spec, JSON.stringify(REAL_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const pages = readFileSync(join(outDir, "fixtures", "pages.js"), "utf-8");
+    assert.ok(pages.includes("/produce/steelmaking/base-data/smelting-time"), "src/views/... 应推导为 /produce/...");
+    assert.ok(pages.includes("PLBD002"), "应保留 pageId");
+    assert.ok(pages.includes("writable: true"), "toolbar 有新增/删除应判定可写");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: formSections 存在时生成 UI 级 round2", () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  writeFileSync(spec, JSON.stringify(REAL_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const round2 = readFileSync(join(outDir, "tests", "round2-write.spec.js"), "utf-8");
+    assert.ok(round2.includes("受控写入(UI)"), "应为 UI 级闭环");
+    assert.ok(round2.includes("getByRole(\"button\", { name: /新增|新建|添加/ }"), "应点击新增按钮");
+    assert.ok(round2.includes("captureAuthorizationHeader"), "应从页面捕获 Authorization 用于 API 校验与清理");
+    assert.ok(round2.includes("机台编码"), "应按表单 label 填充");
+    assert.ok(round2.includes("RunLedger"));
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: 目录批量扫描 page-spec 生成多页面清单", () => {
+  mkdirSync(TMP, { recursive: true });
+  const dir = join(TMP, "specs");
+  mkdirSync(join(dir, "a"), { recursive: true });
+  mkdirSync(join(dir, "b"), { recursive: true });
+  const s1 = { ...REAL_PAGE_SPEC, pageId: "PL001", page: "页面一", dir: "src/views/mod/a" };
+  const s2 = { ...REAL_PAGE_SPEC, pageId: "PL002", page: "页面二", dir: "src/views/mod/b", toolbar: [], formSections: [] };
+  writeFileSync(join(dir, "a", "page-spec.json"), JSON.stringify(s1));
+  writeFileSync(join(dir, "b", "page-spec.json"), JSON.stringify(s2));
+  const outDir = join(TMP, "e2e");
+  try {
+    const result = generateE2eScaffold(dir, { outputDir: outDir });
+    assert.equal(result.pages.length, 2, "应扫描到 2 个页面");
+    const pages = readFileSync(join(outDir, "fixtures", "pages.js"), "utf-8");
+    assert.ok(pages.includes("PL001"));
+    assert.ok(pages.includes("PL002"));
+    assert.ok(pages.includes("writable: false"), "无工具栏按钮的页面应为只读");
+    const round1 = readFileSync(join(outDir, "tests", "round1-readonly.spec.js"), "utf-8");
+    assert.ok(round1.includes("for (const pageEntry of PAGES)"), "round1 应循环页面清单");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});
+
+test("e2e-generator: 生成 auth-setup 登录态 spec 与四 project 配置", () => {
+  mkdirSync(TMP, { recursive: true });
+  const spec = join(TMP, "spec.json");
+  writeFileSync(spec, JSON.stringify(SAMPLE_PAGE_SPEC));
+  const outDir = join(TMP, "e2e");
+  try {
+    generateE2eScaffold(spec, { outputDir: outDir });
+    const auth = readFileSync(join(outDir, "tests", "auth-setup.spec.js"), "utf-8");
+    assert.ok(auth.includes("E2E_LOGIN_USER"), "应支持环境变量驱动登录");
+    assert.ok(auth.includes("storageState"), "应保存 storageState");
+    const config = readFileSync(join(outDir, "playwright.config.js"), "utf-8");
+    assert.ok(config.includes("auth-setup"), "config 应含 auth-setup project");
+    assert.ok(config.includes("storedAuth"), "config 应复用已存在的登录态");
+  } finally {
+    rmSync(TMP, { recursive: true, force: true });
+  }
+});

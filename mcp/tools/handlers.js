@@ -11,6 +11,7 @@ import { audit, autoFix, checkSteppingThreadGroup } from "../../lib/test-audit.j
 import { runApiTests, generateSmokeReport } from "../../lib/api-executor.js";
 import { runPlaywright, runJmeter } from "../../lib/executors.js";
 import { generateE2eScaffold } from "../../lib/e2e-generator.js";
+import { generateReport } from "../../lib/report-generator.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -295,6 +296,49 @@ export function handleE2eGenerate(args) {
   };
 }
 
+// ── wls_test_report_generate ───────────────────
+export function handleReportGenerate(args) {
+  const result = generateReport({
+    api: args.api,
+    playwright: args.playwright,
+    jmeter: args.jmeter,
+    defects: args.defects,
+    cases: args.cases,
+    title: args.title,
+  });
+  if (result.error) return { error: result.error };
+  if (args.output) {
+    writeFileSync(args.output, result.report, "utf-8");
+    return { written: args.output, pass: result.pass, decision: result.decision };
+  }
+  return { pass: result.pass, decision: result.decision, report: result.report };
+}
+
+// ── MCP resources（standards 只读资源）──────────
+export function listStandardResources() {
+  const dir = join(PKG_ROOT, "files", ".github", "standards");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => {
+      const content = readFileSync(join(dir, f), "utf-8");
+      const titleMatch = content.match(/^#\s+(.+)$/m);
+      return {
+        uri: `wl-test://standards/${f}`,
+        name: titleMatch ? titleMatch[1] : f,
+        mimeType: "text/markdown",
+      };
+    });
+}
+
+export function readStandardResource(uri) {
+  const m = String(uri).match(/^wl-test:\/\/standards\/([^/?#]+\.md)$/);
+  if (!m) return null;
+  const file = join(PKG_ROOT, "files", ".github", "standards", m[1]);
+  if (!existsSync(file)) return null;
+  return readFileSync(file, "utf-8");
+}
+
 export const HANDLERS = {
   wls_test_standards: handleStandards,
   wls_test_contract_read: handleContractRead,
@@ -309,4 +353,5 @@ export const HANDLERS = {
   wls_test_run_playwright: handleRunPlaywright,
   wls_test_run_jmeter: handleRunJmeter,
   wls_test_e2e_generate: handleE2eGenerate,
+  wls_test_report_generate: handleReportGenerate,
 };

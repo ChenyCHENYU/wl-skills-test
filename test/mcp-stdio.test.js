@@ -85,9 +85,55 @@ test("MCP stdio: tools/list 返回全部工具", async () => {
   try {
     const res = await server.send("tools/list");
     const names = res.result.tools.map((t) => t.name);
-    assert.ok(names.length >= 13);
+    assert.ok(names.length >= 14);
     assert.ok(names.includes("wls_test_standards"));
     assert.ok(names.includes("wls_test_e2e_generate"));
+    assert.ok(names.includes("wls_test_report_generate"));
+  } finally {
+    server.close();
+  }
+});
+
+test("MCP stdio: initialize 声明 resources 能力", async () => {
+  const server = startServer();
+  try {
+    const res = await server.send("initialize", {});
+    assert.ok(res.result.capabilities.resources, "应声明 resources 能力");
+  } finally {
+    server.close();
+  }
+});
+
+test("MCP stdio: resources/list 返回 11 条规范", async () => {
+  const server = startServer();
+  try {
+    const res = await server.send("resources/list");
+    const resources = res.result.resources;
+    assert.ok(Array.isArray(resources));
+    assert.ok(resources.length >= 11);
+    assert.ok(resources.every((r) => r.uri.startsWith("wl-test://standards/")));
+  } finally {
+    server.close();
+  }
+});
+
+test("MCP stdio: resources/read 读取规范内容", async () => {
+  const server = startServer();
+  try {
+    const list = await server.send("resources/list");
+    const uri = list.result.resources[0].uri;
+    const res = await server.send("resources/read", { uri });
+    assert.ok(res.result.contents[0].text.length > 50, "规范内容应非空");
+  } finally {
+    server.close();
+  }
+});
+
+test("MCP stdio: resources/read 无效 uri 报错", async () => {
+  const server = startServer();
+  try {
+    const res = await server.send("resources/read", { uri: "wl-test://standards/no-such.md" });
+    assert.ok(res.error);
   } finally {
     server.close();
   }
