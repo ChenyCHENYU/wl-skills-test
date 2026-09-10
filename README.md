@@ -2,18 +2,18 @@
 
 <p align="center">
   <strong>测试工程 AI 技能包</strong><br>
-  11 条测试规范 · 12 个 AI Skill · 15 个 MCP 工具 · 契约驱动生成 · 深度 E2E 工程 · 报告聚合 · 性能基线
+  11 条测试规范 · 13 个 AI Skill · 19 个 MCP 工具 · 契约驱动生成 · 深度 E2E 工程 · 报告聚合 · 性能基线
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.11.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.24.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
-  <img src="https://img.shields.io/badge/skills-12-purple.svg" />
-  <img src="https://img.shields.io/badge/MCP-17-teal.svg" />
+  <img src="https://img.shields.io/badge/skills-13-purple.svg" />
+  <img src="https://img.shields.io/badge/MCP-19-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
   <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-179%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/tests-265%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -82,11 +82,11 @@ npx @agile-team/wl-skills-test e2e-check --target ./e2e
 npx @agile-team/wl-skills-test report --api smoke.json --playwright playwright-result.json --defects defects.json --cases 150
 ```
 
-安装后，AI 编辑器自动识别 `.github/skills/` 下的 12 个 Skill 和 `.github/standards/` 下的 11 条规范。
+安装后，AI 编辑器自动识别 `.github/skills/` 下的 13 个 Skill 和 `.github/standards/` 下的 11 条规范。
 
 ---
 
-## 🧪 12 个 AI Skill
+## 🧪 13 个 AI Skill
 
 ### 功能测试链（9 个）
 
@@ -195,7 +195,12 @@ test-reports/
 
 ```bash
 npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --granularity field
+npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --granularity field --json cases.json   # v0.24.0 结构化输出
 ```
+
+> **v0.24.0 JSON 化统一**：`run-gen / diff / perf-compare` 均支持 `--json <path>` 结构化产物；
+> `report --plan-input` 聚合"写测试计划的一次性数据"（本次判定/质量分/维度覆盖/审计/性能/趋势）到
+> `test-reports/plan-input.json`——计划由 AI 写，数据由工具给全。MCP 四个大结果工具全部默认紧凑输出。
 
 基线矩阵（CRUD/权限/必填）之上，**颗粒度到字段**：必填置空、超长、数值 min/max 边界、非数值类型、
 非法枚举、XSS/SQL 注入特殊字符、前后空格；操作级：重复提交、不存在主键、重复删除、无权限（每个写操作）、
@@ -366,37 +371,52 @@ node node_modules/@agile-team/wl-skills-test/scripts/quality-gate.js \
 
 ```
 wl-skills-test/
-├── bin/wl-skills-test.js          # CLI 入口（init/update/doctor/validate/run-gen/audit/fix/run-api/run-playwright/run-jmeter/perf-compare/report/clean/--mcp）
+├── bin/wl-skills-test.js          # CLI 入口（init/update/doctor/validate/run-gen/audit/fix/run-api/run-playwright/run-jmeter/perf-compare/e2e-check/dict-sync/gate/report/clean/--mcp）
 ├── lib/
-│   ├── index.js                   # 命令路由 + 参数解析 + CI 退出码
+│   ├── index.js                   # 命令注册表 + run() 路由（薄层）
+│   ├── cli/                       # CLI 分层（v0.12.0 拆分）
+│   │   ├── args.js                # 参数解析（布尔归一）
+│   │   ├── installer.js           # init/update/clean（占位符版本比对）
+│   │   ├── system.js              # doctor/validate
+│   │   ├── webhook.js             # 质量门/报告结论推送
+│   │   └── commands/              # generation / execution / quality / reports
+│   ├── shared/                    # 共享基础层（单一事实源）
+│   │   ├── utils.js               # readJsonFile(BOM/fail-closed)/writeTextFile/escapeMdCell
+│   │   ├── types.js               # 契约字段类型分类器（生成/执行同口径）
+│   │   └── thresholds.js          # 质量阈值常量（95%/DI 0.3/收敛 ≤20% 等）
+│   ├── report/dimensions.js       # 报告维度注册表（新增维度 = 注册一个对象）
 │   ├── contract-consumer.js       # 契约消费（kit/bd/page-spec 三格式 + 路由推导 + toolbar 操作推断）
-│   ├── test-codegen.js            # 用例生成 + DI + 冒烟 + Markdown
+│   ├── test-codegen.js            # 用例生成 + DI（含模块收敛）+ 冒烟 + Markdown
+│   ├── case-fine-gen.js           # 细粒度用例（FG 内容哈希稳定 ID + dimension 映射）
 │   ├── test-data-factory.js       # 测试数据工厂（枚举/约束/类型/字段名语义）
 │   ├── playwright-generator.js    # Playwright 脚本生成
 │   ├── jmeter-generator.js        # JMeter jmx 生成（CSV 参数化 + SLA 断言 + __P 属性化）
-│   ├── e2e-generator.js           # E2E 三轮策略脚手架（批量 + 登录态 + UI/API 双模式 round2）
-│   ├── api-executor.js            # API 执行器（真实主键替换 + 工厂 payload + 零污染清理）
-│   ├── executors.js               # Playwright/JMeter 执行器 + jtl 解析（引号感知）
-│   ├── perf-compare.js            # 性能基线对比（劣化判定）
-│   ├── report-generator.js        # 测试报告聚合（规范 10 模板 + 上线判定）
-│   ├── write-guard.js             # 安全写链（哈希确认 + 回滚）
-│   ├── plan-hash.js               # 计划哈希
+│   ├── e2e-generator.js           # E2E 三轮策略脚手架（批量 + 登录态 + UI/API 双模式 round2 + UI 适配层）
+│   ├── api-executor.js            # API 执行器（逐字段负例 + 重试/并行 + 真实主键替换 + 零污染清理）
+│   ├── executors.js               # Playwright/JMeter 执行器（异步 spawn 防注入 + jtl 流式解析）
+│   ├── test-audit.js              # T1-T25 审计引擎（规则表驱动，T26+ 加一个对象）
+│   ├── perf-compare.js            # 性能基线对比（劣化判定，基线缺失/为零不漏判）
+│   ├── report-generator.js        # 测试报告聚合（维度注册表 + fail-closed + mtime 自动发现）
+│   ├── report-dimensions.js       # 各维度报告渲染 + history.jsonl（容错读取）
+│   ├── gate.js                    # 质量门聚合（含模块收敛，与 quality-gate 同口径）
+│   ├── write-guard.js             # 安全写链（哈希确认 + 字节级备份回滚 + 重复目标拒绝）
+│   ├── plan-hash.js               # 计划哈希（键序/路径/顺序归一化）
 │   └── templates/                 # 输出模板（5 个）
 ├── mcp/
-│   ├── index.js                   # stdio MCP server（零依赖 JSON-RPC，含 ping + resources）
-│   ├── server.js                  # MCP server 工厂
-│   ├── registry.js                # 14 个工具注册表
-│   └── tools/handlers.js          # 14 个工具实现 + standards 资源
+│   ├── index.js                   # stdio MCP server（零依赖 JSON-RPC，parity 启动校验 + required 参数校验）
+│   ├── server.js                  # MCP server 工厂（同校验）
+│   ├── registry.js                # 工具注册表（assertRegistryParity/validateToolInput）
+│   └── tools/handlers.js          # 工具实现（与 CLI 共享 lib/，fix 写入带 root 约束）
 ├── scripts/
-│   └── quality-gate.js            # DI 质量门 CI 脚本（fail-closed）
+│   └── quality-gate.js            # DI 质量门 CI 脚本（复用 calculateDI 单一实现，fail-closed）
 ├── files/                         # 安装到用户项目的内容
 │   ├── .github/standards/         # 11 条规范
-│   ├── .github/skills/            # 12 个 Skill（5 组）
+│   ├── .github/skills/            # 13 个 Skill（6 组，含 test-onboarding 接入引导）
 │   ├── .mcp.json                  # MCP 配置
 │   └── 9 个编辑器适配文件
 ├── .github/workflows/ci.yml       # 包自身 CI（双 OS × Node 20/22 + npm pack 校验 + 自动发布）
 ├── docs/                          # 架构设计 + 分析文档
-└── test/                          # 122 个测试（单元 + CLI 集成 + 自一致性 + MCP stdio + 块级解析）
+└── test/                          # 209 个测试（单元 + CLI 集成 + 自一致性 + MCP stdio + 引擎/生成器回归）
 ```
 
 ---
@@ -417,7 +437,7 @@ wl-skills-test/
 | 性能基线 | 1 命令 | perf-compare 劣化判定（CI 非零退出） |
 | 报告聚合 | 1 命令 | report 对齐规范 10 模板 + 上线判定 |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元+集成测试 | 179 | 全部通过（含 mock 后端集成/沙箱模拟跑/CLI/MCP stdio/e2e-check/报告体系） |
+| 单元+集成测试 | 265 | 全部通过（含 mock 后端集成/沙箱模拟跑/CLI/MCP stdio/e2e-check/报告体系/引擎与生成器回归） |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
@@ -527,7 +547,12 @@ wl-skills-test/
 | v0.8.0 | 做深：7 层 project 编排 + 归属清单强校验（e2e-check）+ 路由映射 + 逐页深用例 + UI 契约拦截 + 隔离机制 + 证据附件 + 测试填充标准 + T21-T25 |
 | v0.9.0 | 接口测试做扎实：DAG 编排 + 四层断言 + 负例执行 + 契约漂移检测 + 权限双账号 + 网络错误防假通过 |
 | v0.10.0 | 真实落地闭环：选择器适配层 + 沙箱模拟跑（零污染验证）+ 工位模板 + 子表页签 + 字典同步 + 质量门聚合 + webhook |
-| **v0.11.0** | **报告体系闭环：test-reports/ 统一产出 + 自动发现 + 历史趋势 + 索引；细粒度用例生成（字段级边界/非法值/安全，与 run-api DAG 执行映射），测试 179 个** |
+| v0.11.0 | 报告体系闭环：test-reports/ 统一产出 + 自动发现 + 历史趋势 + 索引；细粒度用例生成（字段级边界/非法值/安全，与 run-api DAG 执行映射） |
+| v0.11.1 | 精准性止血：report fail-closed / 权限探针死代码 / 主键精确匹配 / e2e-check 假通过 / MCP stdio 污染 / `--flag=true` 失效 + 退出码统一 + 门禁布尔化 |
+| v0.12.0 | 架构地基：lib/shared 共享层（阈值/类型分类器/工具）+ CLI 分层拆分（lib/cli/）+ 报告维度注册表 + MCP parity/required 校验 |
+| v0.13.0 | 引擎层：jtl 流式解析（直方图分位数）+ run-api 幂等读重试 + 负例/权限并行 + 执行器异步化防注入 + 审计规则表驱动（T13/T14/T18 精准化） |
+| v0.14.0 | 生成器精准化：FG 内容哈希稳定 ID + 基线↔细粒度去重 + 逐字段负例（上限 8）+ dimensionCoverage 追溯 + UI 适配层补漏（校验/自定义注入/泄漏修复）+ 路由归一 |
+| **v0.15.0** | **收口：write-guard 字节级回滚并接线 CLI/MCP 写路径（fix 带 root 约束）+ plan-hash 归一化 + 文档口径与代码一致（工具数/结构/测试数单一事实源）** |
 
 ---
 

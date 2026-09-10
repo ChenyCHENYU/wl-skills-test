@@ -40,6 +40,7 @@ function startServer() {
   child.stderr.on("data", () => {}); // 吞掉 stderr 噪音
 
   return {
+    child,
     send(method, params) {
       const id = ++seq;
       return new Promise((resolve, reject) => {
@@ -80,16 +81,88 @@ test("MCP stdio: ping 响应空结果", async () => {
   }
 });
 
-test("MCP stdio: tools/list 返回全部工具", async () => {
+test("MCP stdio: tools/list 返回全部工具（与 handler 实现精确一致）", async () => {
   const server = startServer();
   try {
     const res = await server.send("tools/list");
     const names = res.result.tools.map((t) => t.name);
-    assert.ok(names.length >= 15);
+    // 精确断言（旧的 >= 15 太松，漂移到 16/18 也不会被发现）
+    const { pathToFileURL } = await import("node:url");
+    const { TOOL_DESCRIPTORS } = await import(pathToFileURL(join(__dirname, "..", "mcp", "registry.js")).href);
+    const { HANDLERS } = await import(pathToFileURL(join(__dirname, "..", "mcp", "tools", "handlers.js")).href);
+    assert.equal(names.length, TOOL_DESCRIPTORS.length);
+    assert.deepEqual([...new Set(names)].sort(), Object.keys(HANDLERS).sort(), "注册表与 handler 键必须一一对应");
     assert.ok(names.includes("wls_test_standards"));
     assert.ok(names.includes("wls_test_e2e_generate"));
     assert.ok(names.includes("wls_test_report_generate"));
     assert.ok(names.includes("wls_test_e2e_check"));
+  } finally {
+    server.close();
+  }
+});
+
+test("MCP stdio: 缺 required 参数返回 -32602（而非 -32603 内部错误）", async () => {
+  const server = startServer();
+  try {
+    const res = await server.send("tools/call", {
+      name: "wls_test_case_generate",
+      arguments: { contractPath: "whatever" }, // 缺 required: type
+    });
+    assert.ok(res.error, "缺 required 参数应返回 JSON-RPC 错误");
+    assert.equal(res.error.code, -32602);
+    assert.ok(res.error.message.includes("type"), `错误信息应指明缺失参数: ${res.error.message}`);
+  } finally {
+    server.close();
+  }
+});
+
+test("MCP stdio: notification（无 id）不应答", async () => {
+  const server = startServer();
+  try {
+    // 原始帧计数：写入 notification 后 300ms 内不应有任何输出行（旧版会回 id:undefined 的帧）
+    let lines = 0;
+    let buf = "";
+    const onData = (chunk) => {
+      buf += chunk.toString("utf-8");
+      let idx;
+      while ((idx = buf.indexOf("\n")) > -1) {
+        if (buf.slice(0, idx).trim()) lines++;
+        buf = buf.slice(idx + 1);
+      }
+    };
+    server.child.stdout.on("data", onData);
+    server.child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "initialized" }) + "\n");
+    await new Promise((r) => setTimeout(r, 300));
+    server.child.stdout.off("data", onData);
+    assert.equal(lines, 0, "notification 不应产生任何应答帧");
+    // 服务器不崩溃：ping 仍可用
+    const res = await server.send("ping");
+    assert.deepEqual(res.result, {});
+  } finally {
+    server.close();
+  }
+});
+
+test("MCP stdio: 批量请求明确拒绝（-32600）", async () => {
+  const server = startServer();
+  try {
+    const reply = new Promise((resolve) => {
+      const onData = (chunk) => {
+        const line = chunk.toString("utf-8").trim();
+        if (!line) return;
+        try {
+          resolve(JSON.parse(line));
+        } catch {
+          resolve(null);
+        }
+        server.child.stdout.off("data", onData);
+      };
+      server.child.stdout.on("data", onData);
+    });
+    server.child.stdin.write(JSON.stringify([{ jsonrpc: "2.0", id: 1, method: "ping" }]) + "\n");
+    const msg = await reply;
+    assert.ok(msg.error, "批量请求应返回错误");
+    assert.equal(msg.error.code, -32600);
   } finally {
     server.close();
   }

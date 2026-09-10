@@ -91,8 +91,15 @@ test("fine-gen: autoExec 映射与 run-api DAG 步骤一致", () => {
   for (const d of ["field-required", "field-type", "field-length", "op-duplicate", "op-permission", "op-pagination"]) {
     assert.ok(autoDims.has(d), `${d} 应标记 autoExec（run-api DAG 已支持）`);
   }
-  // 数值边界/枚举/安全字符等暂不自动执行（诚实标注）
-  assert.ok(!autoDims.has("field-numeric-boundary"));
+  // v0.22.0：数值边界/枚举/并发重复已可自动执行（契约约束/dict 驱动）；
+  // op-update/op-query-combine 依赖 fixture 声明 update/查询字段，由 v17/v22 测试覆盖
+  for (const d of ["field-numeric-boundary", "field-enum", "op-duplicate-concurrent"]) {
+    assert.ok(autoDims.has(d), `${d} 应标记 autoExec（run-api DAG 已支持）`);
+  }
+  // 本 fixture 未声明查询字段，组合查询用例不生成（声明场景由 intrinsic-v22 覆盖）
+  // 安全字符/空格格式仍需产品语义判断，诚实标注人工
+  assert.ok(!autoDims.has("field-security"));
+  assert.ok(!autoDims.has("field-format"));
   try {
     rmSync(TMP, { recursive: true, force: true });
   } catch {}

@@ -8,6 +8,431 @@
 
 ---
 
+## [0.24.0] — 2026-09-10（产物 JSON 化统一 + case_generate 紧凑化收尾 + 测试计划数据侧）
+
+> 全量 265 测试绿（新增 4 条 JSON 化回归）。四个维度（精准/健壮/高效/token 经济）至此无已知短板。
+
+### Added — 全维度 JSON 产物（平台/AI 消费零失真、省 token）
+
+- `run-gen --json <path>`：用例矩阵 + 细粒度用例结构化输出（含稳定 ID）。
+- `diff --json <path>`：变更明细 + 受影响用例清单结构化输出。
+- `perf-compare --json <path>`：劣化判定 + 指标结构化输出。
+- 与既有 `api-result/perf-result/audit-result/plan-input` JSON 共同构成全维度结构化产物体系。
+
+### Added — 测试计划数据侧（`report --plan-input`）
+
+- 聚合"写测试计划需要的一次性数据"到 `test-reports/plan-input.json`：本次判定/质量分/检查项、
+  API 维度覆盖追溯、审计/性能摘要、最近 10 次历史趋势。计划本身仍由 AI 按模板写（决策文档），
+  数据由工具给全——AI 写计划不再从多个 Markdown 报告里人肉拼数据。
+
+### Changed — MCP token 经济收尾
+
+- `wls_test_case_generate` 默认紧凑输出（计数/分布/采样 + hint）——MCP 里最后一处全量数组；
+  `detail:"full"` 或 `output` 落文件取全量。至此 4 个大结果工具（run_api/audit/report/case_generate）
+  全部紧凑化。
+
+---
+
+## [0.23.0] — 2026-09-10（健壮性加固：总时长保护 / 进程树终止 / 参数下限 / history 轮转 / MCP 类型校验）
+
+> 全量 261 测试绿（新增 5 条健壮性回归）。全部面向"坏环境/坏输入下不产生怪行为"。
+
+### Fixed — 挂死与孤儿进程
+
+- **run-api 总时长保护**（`--max-duration <秒>`，默认 600s）：超预算后未执行步骤标 skip
+  （原因可解释："检查环境健康度或 --max-duration"）并正常收尾出报告——慢环境/大契约下 CI 不再挂死；
+  skipped 拉低通过率 → 判定不通过（诚实呈现"没跑完"而非假通过）。
+- **Windows 进程树终止**：playwright/jmeter 超时 kill 改用 `taskkill /T /F`——
+  此前 `child.kill()` 只杀直接子进程，npx→node→playwright 链留孤儿进程持续吃 CPU。
+
+### Fixed — 坏输入不产生怪诊断
+
+- **数值参数下限**：库层夹紧（timeout ≥1000ms、maxDuration ≥30s，`timeout=0/NaN` 不再导致"全超时"误诊）；
+  CLI 层非法值给用法错误（退出码 2）。
+- **MCP 数值类型校验**：`validateToolInput` 对声明 number 的字段拒绝字符串/对象（-32602），
+  不再流进 handler 变 NaN；`quality_analyze` 的 caseCount 数字字符串容错（"150"→150，不再吞成默认 50）。
+
+### Fixed — 资源增长
+
+- **history.jsonl 轮转**：超 500 行自动裁剪头部保留最近记录（长期项目不再无限增长；
+  轮转失败容忍不影响本次追加）。
+
+---
+
+## [0.22.0] — 2026-09-03（内在深化：声明维度全部真执行 + 严格成功码 + swagger 导入增强 + 压测基线串联）
+
+> 全量 256 测试绿（新增 8 条内在回归）。原则不变：不向外扩，把测试本身做到极致闭环。
+
+### Added — 声明 ↔ 执行的最后补齐（run-api）
+
+- **数值边界负例**（`field-numeric-boundary` → autoExec）：契约 `constraints.min/max` 驱动，
+  min-1 / max+1 越界值必须被拒绝；意外成功登记清理（零污染兜底）。swagger-import 导入的
+  minimum/maximum 直接成为探针数据源——OpenAPI 到边界测试全自动。
+- **组合查询收敛探针**（`op-query-combine` → autoExec）：显式声明 ≥2 查询字段（page-spec query
+  或导入的 queryRequest）才执行——用本次创建的记录锚定：按 A 查必命中、A+改值 B 查必不命中，
+  检出"查询条件被后端忽略、列表过滤失真"这类静默缺陷；执行位置在清理之前（锚定记录存活期）。
+- **严格成功码**（`--strict-code`）：默认宽松兼容多后端信封（0/200/缺省），严格模式只认契约
+  `transport.successCode`——jh4j 单一体系统一口径。
+- CLI 暴露 `--timeout`。
+
+### Added — swagger-import 增强
+
+- **OpenAPI 2.x basePath 拼接**（真 bug：v2 的 paths 相对 basePath，此前生成缺前缀的路径）。
+- **`--token`**：有鉴权的 swagger 网关可携带 Authorization 拉取。
+- **响应模型导入**：detail 的 200 响应 schema（解 data/records 信封）→ `models.record`——
+  契约漂移检测基准从"create 字段≈响应字段"的假设升级为声明的响应模型。
+- **查询模型导入**：page 请求体剔除分页参数 → `models.queryRequest`（组合查询探针的数据源）。
+- v2 的 `parameters[in=body]` 兼容（此前只认 v3 requestBody）。
+
+### Added — 串联与工具
+
+- `run-jmeter --baseline-compare`：压测完成自动用 result.jtl 对比基线存档（首次存档/劣化即退出码 1）。
+- MCP 第 19 个工具 `wls_test_gen_contract`（紧凑输出：操作映射/字段数/核对项，可选落契约文件）。
+
+---
+
+## [0.21.0] — 2026-09-03（AI 接入故事：OpenAPI→契约转换 + setup 接入引导 + test-onboarding Skill）
+
+> 全量 248 测试绿（新增 8 条接入回归）。接入从"人写契约"变成"AI 按引导读后端已有资产"。
+
+### Added — OpenAPI/Swagger → 契约转换（人不再手写第二份契约）
+
+- 新命令 `gen-contract --swagger <URL或openapi.json>`（`lib/swagger-import.js`）：
+  确定性关键词映射（queryPage/save/getById/updateById/deleteById → 五操作），
+  requestBody schema 解引用 → createRequest（**required/maxLength/min·max/枚举全保留**——
+  这些正是负例与断言深度的来源）；OpenAPI v2/v3 兼容；`--module` 按模块提取；
+  转换结果强制过 validate-contract；输出"需人工核对"清单（业务成功码 OpenAPI 不含，默认 2000）。
+
+### Added — setup 接入探测引导
+
+- 新命令 `wl-skills-test setup [--base-url]`：探测项目形态（Java Maven/Gradle、前端框架）、
+  接口描述来源（Swagger 在线探测 v3/api-docs 等 → 本地 openapi.json → api.md）、
+  规范安装状态；生成 `wl-test.config.json` 骨架（sit/uat 档案 + auth 凭据 $ENV 引用，不覆盖已有）；
+  **输出可直接发给 AI 的标准接入指令**。
+
+### Added — 第 13 个 Skill：test-onboarding（AI 编排 SOP）
+
+- `.github/skills/onboarding/test-onboarding/`：用户一句"接入测试"即触发。
+  六步 SOP 全部绑定确定性工具：setup 探测 → gen-contract 提取（AI 不手写）→
+  validate-contract 把关（不过不往下走）→ 配置确认（**凭据不碰明文**）→
+  run-api 试跑 → 汇报+固化 CI。AI 只编排与理解文档，执行全部走工具。
+
+---
+
+## [0.20.0] — 2026-09-02（内在闭环收口：声明用例全部真执行 / detail 漂移 / fix 复验 / 契约校验前置）
+
+> 全量 240 测试绿（新增 4 条闭环回归）。原则：不向外扩、不做外部集成——把测试本身的闭环做严。
+
+### Added — 声明 ↔ 执行的最后两块补齐（run-api）
+
+- **不存在主键探针**（`op-notfound`，detail/update/remove 三处）：对确定性不存在的主键断言
+  "业务拒绝或空数据 + 非 5xx"——细粒度用例早已声明（此前 autoExec:false 留人工，实则执行器数据齐备）。
+- **删除幂等探针**（`op-idempotent`）：对已删主键重复 remove，断言非 5xx 并记录行为（拒绝/幂等）；
+  "不误删"由 verify-gone 兜底。两个维度均已翻转为 autoExec:true 并进 dimensionCoverage 追溯。
+- **detail 响应参与契约漂移检测**（此前仅 list 首记录参与——detail 投影常与列表不同，覆盖面翻倍）。
+
+### Added — 修复与契约的闭环
+
+- **fix 复验**：自动修复写入后对修改文件 re-audit，输出"剩余致命/错误"计数与人工处理入口
+  （此前 audit→fix 之后是死胡同，修没修干净无人知晓）。
+- **契约快速校验**：新命令 `validate-contract`（规则全部源自 consumeContract 真实归一逻辑：
+  路径 / 开头、{id} 占位范围、method 合法性、字段重名、successCode 数值、分页约束等）；
+  **run-api 执行前串联同样校验**——契约写错不再跑到一半才炸、且不再被误诊为"服务不可用"。
+
+---
+
+## [0.19.0] — 2026-09-02（报告门户与度量：质量分 / HTML 单文件报告 / SVG 趋势 / 飞书推送）
+
+> 全量 236 测试绿（新增 5 条门户回归）。v0.16.0 → v0.19.0 四版本"可用性 + 有效性 + 性能 + 门户"迭代完成。
+
+### Added — 质量分（管理层看得懂的一个数字）
+
+- `computeQualityScore`：多维度检查项 → **质量分 0-100 + A/B/C/D 等级**（每未达标项 -25，确定性可解释）；
+  聚合报告结论区、HTML 报告头部、history.jsonl 趋势三处带出。
+
+### Added — 单文件 HTML 交互报告（零依赖）
+
+- `report --html` / MCP `report_generate(html:true)`：数据内嵌 JSON + 原生 JS——
+  全部/未达标/通过筛选、离线可看、无外部资源；AI 只需回传文件路径，token 零消耗。
+
+### Added — SVG 趋势与飞书
+
+- Markdown 报告内嵌 **SVG 通过率折线**（API/UI 双系列，≥2 个历史点自动绘制）。
+- webhook 新增 **飞书**（text 消息，自动剥离 markdown 星号）；`buildWebhookBody` 导出可测。
+
+---
+
+## [0.18.0] — 2026-09-02（性能工程化：p90/TPS/错误TopN + 基线自动管理 + 混合场景压测）
+
+> 全量 231 测试绿（新增 4 条性能回归）。
+
+### Added — 性能指标补全
+
+- jtl 解析（流式直方图）增补 **p90、吞吐量 TPS（样本时间窗）、错误分布 TopN**（label 归类）；
+  性能维度报告/聚合报告同步展示（P50/P90/P95/P99 + req/s + 错误 TopN 表）。
+
+### Added — 基线自动管理
+
+- `perf-compare --auto-baseline`：首次运行当前指标自动存档为基线（test-reports/perf-baseline.json），
+  此后自动对比存档；**劣化不会自动更新基线**——确认优化到位后 `--update-baseline` 人工更新
+  （防"慢性漂移"被自动吞掉）；`--baseline` 显式路径优先。
+
+### Added — 混合场景压测
+
+- `run-gen --type jmeter --scenario mixed`：读写权重混合（查询 80% / 新增 15% / 更新 5%，
+  ThroughputController percentExecution；契约缺操作时权重自动归一化），模拟真实读写比例，
+  remove 不参与压测；生成物通过 T1-T25 自审计。
+
+---
+
+## [0.17.0] — 2026-09-02（测试有效性：更新生效验证 / 非法枚举负例 / 并发重复探针 / 契约 diff + MCP 工具）
+
+> 全量 227 测试绿（新增 7 条有效性回归）。门禁从"跑得通"升级为"拦得住真缺陷"。
+
+### Added — run-api 深度断言
+
+- **更新生效验证**：S04 用差异化字段值（业务键保持原值——真实系统业务键更新时不可变；
+  字典/枚举字段保持合法值）执行 update，S05 详情读回逐字段比对——
+  "更新被后端忽略/不落库"从此被检出（此前回放 create payload，更新链路假覆盖）。
+- **非法枚举负例**：dict.json 提供合法值的字段自动传确定性非法值（`__WL_INVALID_ENUM__`）
+  验证拒绝（上限 4 字段）——field-enum 从人工用例变为自动执行，dimensionCoverage 可核对。
+- **并发重复探针**（`duplicate-concurrent`）：同业务键 5 并发，顺序 duplicate 测不出
+  race 窗口的重复落库——本步骤直接暴露唯一约束/幂等缺失，失败诊断明确指引
+  "必须加数据库唯一索引而非仅应用层校验"。
+
+### Added — 契约变更影响面（diff）
+
+- 新命令 `wl-skills-test diff --old <旧> --new <新>` 与 MCP 工具 `wls_test_contract_diff`
+  （第 18 个）：操作级/字段级/传输层变更明细 + 受影响用例清单（新增/作废/需重跑，
+  基于内容哈希稳定 ID 精确到条）+ Markdown 报告（test-reports/契约变更影响面.md）。
+  MCP 返回紧凑结构化结果（changes + counts + hint），契约升级后回归范围一目了然。
+
+### Changed
+
+- 细粒度用例：`field-enum` 翻转为 autoExec:true（dict 提供后自动执行）；新增
+  `op-update`（更新后字段回读一致）、`op-duplicate-concurrent`（并发重复提交）两条
+  autoExec 用例，与 run-api 新步骤一一对应。
+- README/MCP 工具数 17 → 18（文档口径测试守护）。
+
+---
+
+## [0.16.0] — 2026-09-02（可用性落地 + token 经济学：配置档案 / auth 自动登录 / CI 模板 / 失败诊断 / MCP 紧凑输出）
+
+> 全量 220 测试绿（新增 6 条可用性回归）。目标：把「采用摩擦」与「AI token 浪费」一起砍掉。
+
+### Added — 零配置上手
+
+- **项目级配置 `wl-test.config.json` + 环境档案**：`--profile sit|uat` 切换 base-url/token/dict 等；
+  字符串值支持 `$VAR`/`${VAR}` 环境变量引用（token 不落盘明文）；`.env` 零依赖解析注入；
+  CLI 显式参数 > 档案 > 根级默认；run-api/run-playwright/run-jmeter/dict-sync/gate/report 全部接入。
+- **Auth 适配层**：jh4j 风格登录（账号密码→token），run-api 无 token 自动登录、
+  **401/token 过期自动重登重试一次**（配置 auth 段经 usernameEnv/passwordEnv 引用凭据）。
+- **CI 模板开箱即用**：新命令 `wl-skills-test ci --type github|gitlab|jenkins` 生成质量门流水线
+  （audit 阻断 + 按需 run-api + report 产物上传），已存在不覆盖（--force 覆盖）、--dry-run 预览。
+
+### Added — 失败可自助诊断
+
+- run-api 每个失败/错误步骤附带 **`hint` 诊断指引**（负例失败→"后端校验缺口，找后端补 XX"；
+  权限→越权风险；readback→数据一致性；401→token/auth 配置；5xx→环境健康度…），
+  CLI 控制台、Markdown 报告（新增"诊断指引"列）、MCP 摘要三处带出——
+  开发拿到结果就知道下一步找谁，不再来回问。
+
+### Added — token 经济学（AI 调用降本）
+
+- **MCP 紧凑输出**：`wls_test_run_api` / `wls_test_audit` / `wls_test_report_generate` 默认返回
+  「结论 + 失败 TopN + 诊断指引」紧凑摘要（典型 run-api 全量含报文快照数十 KB → 摘要 ~1-2KB），
+  `detail:"full"` 或读结果文件才取全量（`lib/shared/compact.js`）。
+- 报告聚合结果新增 `checks` 明细导出，紧凑摘要按未达标项裁剪。
+
+---
+
+## [0.15.0] — 2026-09-02（收口：write-guard 字节级回滚并接线 + plan-hash 归一化 + MCP fix 路径约束 + 文档口径单一事实源）
+
+> 全量 214 测试绿（新增 5 条收口回归）。v0.11.1 → v0.15.0 五阶段优化完成。
+
+### Changed — 安全写链（健壮）
+
+- **write-guard 字节级回滚**：备份/恢复改用 Buffer——二进制/BOM/CRLF/文件模式保真，
+  不再依赖 UTF-8 文本往返；回滚失败如实上报（`rollbackErrors`，此前吞掉且
+  `written/rolledBack` 计数失真）；重复目标路径直接拒绝（同计划双写同路径会互相踩备份）。
+- **plan-hash 归一化**：对象键序无关 + 路径斜杠归一（`D:\a` 与 `D:/a` 同哈希）+ 文件顺序无关。
+- **CLI fix 接线安全写链**：auto-fix 实际写入经哈希确认 + 备份回滚（此前裸 writeFileSync，
+  中途失败留下半完成状态）；**MCP `wls_test_fix` 增加 root 路径约束**
+  （confirm:true 也只能写 root 之下，防 AI 误触项目外文件）且同样走安全写链。
+- contract-consumer 契约读取剥离 UTF-8 BOM（与 report/gate/dict 统一）。
+
+### Changed — 文档口径单一事实源（直观）
+
+- README 徽章/正文/包结构/版本历程与代码对齐（MCP 工具数从注册表派生、版本号与 package.json
+  一致、测试数与实际一致、包结构反映 lib/cli + lib/shared + lib/report 拆分）；
+  新增 `final-v15.test.js` 文档一致性测试——工具数/版本徽章/测试数漂移会在 CI 被拦下。
+
+---
+
+## [0.14.0] — 2026-09-02（生成器精准化：稳定 ID + 基线去重 + UI 适配层补漏 + 逐字段负例 + 维度覆盖追溯）
+
+> 全量 209 测试绿（新增 7 条生成器回归）。
+
+### Added — 细粒度用例稳定 ID 与去重（精准）
+
+- **FG 用例 ID 内容哈希化**（`FG-<sha256前8>`，由 dimension+module+title 决定）——契约增删一个字段
+  不再让后续所有 `FG-###` 编号漂移，缺陷追溯链稳定；同语义字段生成内置去重。
+- **基线 ↔ 细粒度去重**：`run-gen --granularity field` 合并输出时，基线矩阵
+  「实体 - 字段 必填校验」已覆盖的 field-required 细粒度用例剔除（此前双重覆盖）。
+
+### Added — 声明 ↔ 执行一致（精准）
+
+- **逐字段负例**：run-api 必填缺失/类型错误/超长越界从"每类采样第一个字段"扩展为
+  **每类全字段（上限 8）**——兑现细粒度用例 `autoExec: true` 的全字段承诺。
+- **维度覆盖追溯**：`summary.dimensionCoverage`（各 dimension 的 executed/passed）——
+  细粒度用例声明与 run-api 实际执行可对照核对。
+
+### Fixed — E2E 生成器（健壮/精准）
+
+- **批量模式表单字段合并**：首个 spec 无 formSections 时不再永久屏蔽后续 spec 的字段
+  （旧 first-wins 导致多页批量生成错误的 round2 形态）；manifest 模式跨页面合并。
+- **UI 适配层**：非法 `--ui` 直接报错（旧实现静默回退 element-plus，生成物跑不通才发现）；
+  支持 `options.selectors` **注入自定义适配层**（第四个组件库不用改生成器）；
+  修复 3 处 spec 内硬编码 `.el-*` 绕过适配层（fillQueryInput/clickAction/W5 确认框），
+  适配层新增 `queryForm`/`toolbarButton`/`messageBoxConfirm` 键。
+- **round2 生成物**：`data` 为对象信封时正确提取主键（旧 `String(obj)` 得 "[object Object]"
+  污染账本）；落库校验/零污染复查 `size 10→100`（防第一页漏查）且改用**精确主键匹配**
+  （与 run-api 同口径，子串误命中修复）；`fillLines` label 经 `JSON.stringify` 转义
+  （含引号标签此前生成语法错误的 spec）。
+- **路由**：Windows 反斜杠 dir 推导归一（`src\views\x` → `/x`）；无效 page-spec/routes JSON
+  记入 warnings（此前静默丢弃）；自动合并的路由映射多余项降级为警告（陈旧 routes.dev.json
+  不再一刀切阻断生成），显式 `--routes` 保持严格双向校验。
+
+---
+
+## [0.13.0] — 2026-09-02（引擎层：jtl 流式解析 + run-api 重试/并行 + 执行器异步化防注入 + 审计规则表驱动）
+
+> 全量 202 测试绿（新增 8 条引擎回归：200k 行 jtl 基准 / CSV 双写引号 / 规则表完整性 /
+> T13·T14·T18 精准化 / 网络抖动重试 / 并行执行顺序稳定性）。
+
+### Changed — jtl 解析流式化（性能）
+
+- `parseJtlResults` 改为 **readline 逐行流式 + 整数直方图分位数**——内存与样本数解耦，
+  百 MB 级结果（默认 100 线程多循环常见）不再整文件 + 全行数组 + 全 times 数组进内存（OOM 风险）。
+- `splitJtlLine` 支持 **CSV 双写引号转义**（`""` → `"`）——failureMessage 含引号逗号不再错位到 success 列。
+- JMeter 非零退出时也解析已生成的部分 jtl（压测中断时已采样数据仍有统计价值）。
+
+### Changed — 执行器异步化与防注入（健壮/安全）
+
+- `runPlaywright` / `runJmeter` 由 `execSync`（阻塞单线程最长 5-10 分钟，MCP server 全程冻结）
+  改为 **spawn 参数数组 + shell:false**——路径含空格/`&`/`|` 不再破坏命令或注入 shell；
+  Windows 下自动解析 `npx.cmd` / `jmeter.bat` 候选。
+- `perfCompare` 及其调用链（gate / CLI / MCP）随之异步化。
+
+### Changed — run-api 重试与并行（性能/健壮）
+
+- **幂等读抖动重试**：冒烟/详情/分页等 GET 语义步骤遇传输层错误（status=0）按抖动退避重试 2 次——
+  一次网络抖动不再让步骤 error 并级联 skip 大半链路；业务失败/HTTP 4xx/5xx 原样返回不重试。
+- **有界并行**：负例×3 + 重复提交 + 权限探针（均为独立业务键/只读探针，互不依赖）并行执行，
+  主干（冒烟→新增→读回→更新→详情）与清理复核保持顺序；报告仍按步骤定义顺序输出。
+
+### Changed — 审计规则表驱动（扩展性）
+
+- T1-T25 重构为**自包含规则对象**（`{id, severity, desc, target, check(ctx)}`）——新增 T26+
+  只需在对应目标数组追加一个对象，单规则异常自动隔离；`RULES` 元数据导出形状不变。
+- 精准化修复：**T13** 认可 `__CSVRead`/`UserParameters` 等替代参数化（此前 fatal 误伤合法方案）；
+  **T14** 循环控制器判定精确到 `LoopController.loops` 配置（此前注释里出现"loops"字样即豁免）；
+  **T18** 解析 ramp_time 实际值（支持 `${__P(rampUp,默认值)}`），`ramp_time=0` 瞬时打满被检出
+  （此前只查存在性）。
+
+---
+
+## [0.12.0] — 2026-09-02（架构地基：共享层 + CLI 分层拆分 + 报告维度注册表 + MCP 一致性防线）
+
+> 不改行为的结构重构（除列明的小修正），全量 194 测试保持绿。
+> 加一个命令 / 一个报告维度 / 一个 MCP 工具，从此各只需改一处。
+
+### Added — lib/shared 共享基础层（消灭 10+ 处重复实现）
+
+- `shared/thresholds.js`：95% / DI 0.3 / 模块收敛 ≤20% / P99<500ms 等质量阈值单一事实源
+  （此前散落 8+ 处魔法数字，口径漂移风险）。
+- `shared/types.js`：契约字段类型分类器单一实现（数值/整数/布尔/日期/枚举/declaredJsType）——
+  此前用例生成（case-fine-gen）、数据工厂（test-data-factory）、执行负例（api-executor）各有一套正则，
+  生成与执行对"什么算数值"口径不一。
+- `shared/utils.js`：readJsonFile（BOM 剥离 + fail-open/closed 显式化）/ writeTextFile（mkdir+write）/
+  escapeMdCell / normalizeAuthHeader / toBool / checkCommandAvailable。
+- `calculateDI` 补齐**模块收敛**（byModule + 最差模块判定）——gate.js 文档承诺但实现缺失，
+  与 scripts/quality-gate.js 的第二份 DI 实现收敛为单一实现。
+
+### Changed — CLI 分层（lib/index.js 1150 行 → 薄路由 + lib/cli/）
+
+- `lib/index.js` 仅保留命令注册表（COMMANDS + ROUTERS）与 run() 分发；
+  实现拆至 `lib/cli/{args,context,installer,system,webhook}.js` 与
+  `lib/cli/commands/{generation,execution,quality,reports}.js`。
+- 新增命令从改 4 处（表/帮助/函数/switch）→ 注册表各加一行。
+- doctor 工具探测超时 5s→10s（npx 冷启动常超 5s 造成"未安装"误报）。
+
+### Changed — 报告维度注册表（lib/report/dimensions.js）
+
+- api / playwright / jmeter / audit / defects 五维度改为声明式注册
+  （key/label/patterns/render），新增维度 = 注册一个对象；
+  report-generator 只负责来源读取（fail-closed）→ 渲染 → 判定，章节序号动态生成。
+
+### Added — MCP 一致性防线与协议修正
+
+- **启动期 parity 校验**：`assertRegistryParity` 确保 TOOL_DESCRIPTORS 与 HANDLERS 键完全一致
+  （stdio 入口退出码 1 拒绝启动，server 工厂抛错）；测试断言从 `>= 15` 收紧为精确一致。
+- **inputSchema.required 运行时校验**：tools/call 缺必填参数返回 `-32602`（此前流进 handler 变 -32603）。
+- **notification 不应答**（此前对无 id 请求回 `id:undefined` 帧）；批量请求明确 `-32600` 拒绝。
+- Handler 胶水对齐 CLI：gate 数值参数解析、report 支持 audit/trend/reportsDir、
+  e2e_generate 透传 ui/workstation/routes、smoke_select 坏 JSON 返回明确错误、
+  env_check 增加 Node>=20 检查、quality_analyze 不再把 caseCount=0 吞成 50。
+
+---
+
+## [0.11.1] — 2026-09-02（精准性止血：6 个 P0 判定/写盘缺陷 + 退出码统一 + 门禁布尔化）
+
+> 本版本全部为判定正确性修复：报告 fail-closed、权限探针死代码、主键精确匹配、e2e-check 假通过、
+> MCP stdio 污染、`--flag=true` 失效。新增 12 条回归测试（总 191 全绿）。
+
+### Fixed — 判定与安全（P0）
+
+- **report fail-closed**：`api/playwright/jmeter/audit/defects` 来源文件存在但损坏（非法 JSON/结构无效）时，
+  不再静默丢弃维度导致"残缺数据具备上线条件"，改为计入未达标检查项并在报告注明（`report-generator.js`）。
+- **权限探针死代码**：detail/remove 权限探针在步骤构建期判断 `ctx.createdId`（恒为 null）导致永不注册、
+  权限覆盖虚报——移入 gate 闭包运行期判断（`api-executor.js`）。
+- **主键匹配精确化**：`findRecordById` 由 `JSON.stringify(rec).includes(id)` 子串匹配改为
+  显式主键字段全等 + 任意字段值全等（防 id=123 命中含"1234"记录的假通过）；verify-gone 同步修复。
+- **e2e-check fail-closed**：缺 `fixtures/suites.js` 归属清单由 warning 假通过改为 error 阻断；
+  suites.js 存在但未导出 `assertE2ESpecCatalog` 同样记 error。
+- **MCP stdio 污染**：run-playwright/run-jmeter 执行器进度输出改走 stderr，
+  不再破坏 MCP JSON-RPC 帧（`executors.js`）。
+- **`--flag=true` 失效**：参数解析器布尔归一（`true`/`false`），此前 `--dry-run=true` 以字符串
+  参与 `=== true` 判断而静默执行真实写盘。
+
+### Fixed — 判定与健壮（P1）
+
+- **未知 `--flag` 不再触发真实安装**：打错选项名（如 `--dry-runn`）此前默认路由到 init 全量写盘，
+  现退出码 2 并提示。
+- **perf-compare 基线校验**：基线缺 p50/p95/p99 指标 → 报错；基线为 0 且当前有值 → 直接判劣化
+  （此前除零返回 0 永不告警的假阴性）。
+- **update 占位符比对**：含 `__WL_SKILLS_TEST_VERSION__` 的文件安装时已替换为当期版本，
+  此前与原始内容比较被永久误判"用户已修改"而永不更新——现与任意历史版本替换结果比对。
+- **`__fieldMap__` 接通**：dict-sync `--map` 写出的字段级映射此前从未被 run-api 消费（文档承诺的死集成），
+  现 buildPayload 按 `字段 → 字典码` 映射优先注入合法值。
+- **零污染阻断**：契约缺 remove 操作或清理未成功时，run-api 结论不再允许"通过（可转测）"
+  （`summary.cleanup.pending`）。
+- **history.jsonl 容错**：单行损坏（并发写交错）跳过而非让 `report --trend` 整体崩溃。
+- **Playwright 输出解析**：兼容千分位分组数字（"1,234 passed" 此前解析为 1）。
+
+### Changed — 门禁布尔化 + 退出码统一
+
+- run-api / run-playwright / run-jmeter 结果新增 `pass` 布尔字段，CI 门禁判定消费布尔值，
+  不再依赖中文文案（`decision.startsWith("不通过")` 等脆弱判断）。
+- 退出码规范：**0 通过 / 1 运行失败 / 2 用法错误**。修复 7 个命令缺必填参数退出 0、
+  run-gen 生成失败退出 0、doctor/validate 失败退出 0、audit/fix/run-playwright/run-jmeter
+  错误路径退出 0 的门禁漏判。
+- report 自动发现按 **mtime** 取最新（字典序会让 `result-10` 排在 `result-2` 前），并纳入
+  **audit 维度**（`audit-result.json` → 报告"测试代码审计"章节）。
+- JSON 读取统一剥离 UTF-8 BOM（Windows 记事本/PowerShell 产出的结果文件不再解析失败）。
+
+---
+
 ## [0.11.0] — 2026-08-15（报告体系闭环 + 细粒度用例：每个维度产出到使用项目 + 历史趋势迭代）
 
 > 端到端验证（使用项目视角）：run-api / audit / report 依次执行 → `test-reports/` 汇聚 7 类产物

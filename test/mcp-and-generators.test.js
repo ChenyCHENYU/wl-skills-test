@@ -70,14 +70,17 @@ test("MCP: wls_test_contract_read 无效路径返回错误", () => {
   assert.ok(result.error);
 });
 
-test("MCP: wls_test_case_generate 从契约生成用例", () => {
+test("MCP: wls_test_case_generate 从契约生成用例（默认紧凑，detail:full 全量）", () => {
   const tmpFile = join(process.cwd(), ".tmp-mcp-contract2.json");
   writeFileSync(tmpFile, JSON.stringify(SAMPLE_CONTRACT));
   try {
-    const result = HANDLERS.wls_test_case_generate({ contractPath: tmpFile });
-    assert.ok(result.caseCount > 0);
-    assert.ok(result.cases.length > 0);
-    assert.equal(result.summary.entity, "Order");
+    const compact = HANDLERS.wls_test_case_generate({ contractPath: tmpFile });
+    assert.ok(compact.caseCount > 0);
+    assert.ok(compact.summary.entity === "Order");
+    assert.equal(compact.cases, undefined, "默认不得回全量 cases（token 经济）");
+    assert.ok(Array.isArray(compact.sample) && compact.sample.length > 0, "应回采样");
+    const full = HANDLERS.wls_test_case_generate({ contractPath: tmpFile, detail: "full" });
+    assert.ok(full.cases.length > 0, "detail:full 回全量");
   } finally {
     rmSync(tmpFile, { force: true });
   }

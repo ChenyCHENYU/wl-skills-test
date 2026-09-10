@@ -1,11 +1,40 @@
 /**
  * MCP 工具注册表 — wls_test_* 前缀
- * 工具前缀 wls_test_*，7 个工具已全部实现并有测试覆盖
+ *
+ * 工具数量以 getToolCount() 为准（文档/徽章数字请从代码派生，勿手写）。
+ * 注册表与 handlers 的键一致性由 assertRegistryParity 保证（server 启动 + 测试双通道）。
  */
 
 export const TOOL_PREFIX = "wls_test";
 
 export const TOOL_DESCRIPTORS = [
+  {
+    name: "wls_test_contract_diff",
+    description: "契约变更影响面分析：操作/字段级变更明细 + 受影响用例清单（新增/作废/需重跑），返回紧凑结构化结果",
+    inputSchema: {
+      type: "object",
+      required: ["oldPath", "newPath"],
+      properties: {
+        oldPath: { type: "string", description: "旧契约文件路径" },
+        newPath: { type: "string", description: "新契约文件路径" },
+        output: { type: "string", description: "Markdown 报告输出路径（可选）" },
+      },
+    },
+  },
+  {
+    name: "wls_test_gen_contract",
+    description: "从 OpenAPI/Swagger（URL 或 openapi.json）确定性生成测试契约，返回紧凑结果（操作/字段/核对项），可选写入文件",
+    inputSchema: {
+      type: "object",
+      required: ["swagger"],
+      properties: {
+        swagger: { type: "string", description: "OpenAPI 地址（http://sit:8080/v3/api-docs）或本地 openapi.json 路径" },
+        module: { type: "string", description: "只提取该首段路径的模块" },
+        token: { type: "string", description: "拉取 OpenAPI 用的 Authorization（有鉴权的 swagger 网关）" },
+        output: { type: "string", description: "契约写入路径（缺省不写文件）" },
+      },
+    },
+  },
   {
     name: "wls_test_standards",
     description: "查询测试规范（11 条 standards 按编号或名称读取）",
@@ -178,15 +207,18 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_report_generate",
-    description: "聚合 run-api/run-playwright/run-jmeter/DI 缺陷结果生成测试报告（对齐规范 10 模板，含上线判定）",
+    description: "聚合 run-api/run-playwright/run-jmeter/audit/DI 缺陷结果生成测试报告（对齐规范 10 模板，含上线判定）",
     inputSchema: {
       type: "object",
       properties: {
         api: { type: "string", description: "run-api 输出的 JSON 文件路径" },
         playwright: { type: "string", description: "run-playwright 输出的 JSON 文件路径" },
         jmeter: { type: "string", description: "性能结果 JSON 文件路径" },
+        audit: { type: "string", description: "audit 输出的 JSON 文件路径" },
         defects: { type: "string", description: "缺陷清单 JSON 文件路径" },
         cases: { type: "number", description: "总用例数（DI 密度分母）" },
+        trend: { type: "boolean", description: "追加最近 5 次汇总趋势" },
+        reportsDir: { type: "string", description: "test-reports 目录（趋势数据源，默认 test-reports）" },
         output: { type: "string", description: "报告输出路径（可选）" },
       },
     },
@@ -239,4 +271,41 @@ export function getToolCount() {
 
 export function getToolNames() {
   return TOOL_DESCRIPTORS.map((t) => t.name);
+}
+
+/**
+ * 注册表 ↔ handler 一致性校验（两份 map 只在调用时才发现漂移，这里在启动期拦截）
+ * @param {Record<string, Function>} handlers
+ * @returns {{ ok: boolean, missing: string[], extra: string[] }}
+ */
+export function assertRegistryParity(handlers) {
+  const described = new Set(TOOL_DESCRIPTORS.map((t) => t.name));
+  const implemented = new Set(Object.keys(handlers));
+  const missing = [...described].filter((n) => !implemented.has(n));
+  const extra = [...implemented].filter((n) => !described.has(n));
+  return { ok: missing.length === 0 && extra.length === 0, missing, extra };
+}
+
+/**
+ * 按 inputSchema.required 校验 tools/call 参数（运行时防线——
+ * 此前 required 只写在 schema 里从不校验，坏参数流进 handler 变成 -32603 内部错误）
+ * @returns {string|null} 错误消息；null 表示通过
+ */
+export function validateToolInput(name, args) {
+  const descriptor = TOOL_DESCRIPTORS.find((t) => t.name === name);
+  if (!descriptor) return null;
+  const required = descriptor.inputSchema?.required || [];
+  const missing = required.filter((k) => args?.[k] === undefined || args?.[k] === null || args?.[k] === "");
+  if (missing.length > 0) return `缺少必填参数: ${missing.join(", ")}`;
+  // 数值类型校验：声明 number 的字段传字符串/对象 → 调用方错误（-32602），而非流进 handler 变 NaN
+  const props = descriptor.inputSchema?.properties ?? {};
+  for (const [key, schema] of Object.entries(props)) {
+    if (schema?.type !== "number") continue;
+    const v = args?.[key];
+    if (v === undefined || v === null) continue;
+    if (typeof v !== "number" || !Number.isFinite(v)) {
+      return `参数 ${key} 必须是数值（当前: ${JSON.stringify(v)}）`;
+    }
+  }
+  return null;
 }

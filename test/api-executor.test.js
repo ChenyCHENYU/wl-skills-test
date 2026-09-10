@@ -53,8 +53,8 @@ function startMock(config = {}) {
       }
 
       if (method === "POST" && url === "/order/save") {
-        if (validateRequired && !json.orderNo) {
-          return send(200, { code: 4004, message: "orderNo 必填", data: null });
+        if (validateRequired && (!json.orderNo || !json.orderName || json.amount === undefined)) {
+          return send(200, { code: 4004, message: "必填字段缺失", data: null });
         }
         if (validateType && typeof json.amount === "string") {
           return send(200, { code: 4004, message: "amount 类型错误", data: null });
@@ -86,6 +86,9 @@ function startMock(config = {}) {
 
       if (method === "PUT" && url === "/order/updateById") {
         if (!store.has(json.id)) return send(200, { code: 4004, message: "不存在", data: null });
+        const rec = store.get(json.id);
+        const { orderNo: _businessKeyImmutable, ...rest } = json; // 业务键更新时不可变（真实系统约束）
+        store.set(json.id, { ...rec, ...rest });
         return send(200, { code: 2000, message: "ok", data: true });
       }
 
@@ -172,10 +175,14 @@ test("api-executor: 全链路 DAG 通过（四层断言 + 零污染 + 负例 + �
     assert.ok(rb.assertions.some((a) => a.name.includes("字段回读一致")), "应含字段级比对断言");
     assert.equal(step(result, "update")[0].status, "pass");
     assert.equal(step(result, "detail")[0].status, "pass");
-    // 负例全部通过（后端有校验）
+    // 负例全部通过（后端有校验；逐字段：必填×3 + 类型×1 + 超长×2）
     const negs = step(result, "negative");
-    assert.equal(negs.length, 3, "应执行三类负例");
+    assert.equal(negs.length, 6, "应执行全部字段负例（orderNo/orderName/amount 必填、amount 类型、orderNo/orderName 超长）");
     assert.ok(negs.every((n) => n.status === "pass"), negs.map((n) => `${n.name}:${n.status}:${n.reason}`).join(" | "));
+    // 维度覆盖追溯（细粒度用例声明 ↔ 实际执行）
+    assert.equal(s.dimensionCoverage["field-required"].executed, 3);
+    assert.equal(s.dimensionCoverage["field-type"].executed, 1);
+    assert.equal(s.dimensionCoverage["field-length"].executed, 2);
     // 重复提交被拒
     assert.equal(step(result, "duplicate")[0].status, "pass");
     // 分页边界

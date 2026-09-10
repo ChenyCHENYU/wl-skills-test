@@ -8,13 +8,13 @@ import { join } from "node:path";
 
 test("executors: runPlaywright 工具未安装时优雅降级", async () => {
   const { runPlaywright } = await import("../lib/executors.js");
-  const result = runPlaywright({ testDir: "./nonexistent" });
+  const result = await runPlaywright({ testDir: "./nonexistent" });
   assert.ok(result.error || result.tool === "playwright");
 });
 
 test("executors: runJmeter 工具未安装时优雅降级", async () => {
   const { runJmeter } = await import("../lib/executors.js");
-  const result = runJmeter({ jmxPath: "./nonexistent.jmx" });
+  const result = await runJmeter({ jmxPath: "./nonexistent.jmx" });
   assert.ok(result.error || result.tool === "jmeter");
 });
 

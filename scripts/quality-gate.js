@@ -10,9 +10,10 @@
  * 参数风格: --key=value 与 --key value 均支持。
  * 退出码: 0=通过, 1=阻断（含输入无效，fail-closed）
  */
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { readJsonFile } from "../lib/shared/utils.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -48,66 +49,43 @@ const caseCount = typeof opts.cases === "string" ? parseInt(opts.cases, 10) : 50
 const allChecks = [];
 const inputErrors = [];
 
-// ── 1. DI 缺陷指数检查 ──────────────────────────
+// ── 1. DI 缺陷指数检查（复用 calculateDI 单一实现，含模块收敛）──
 if (defectsArg) {
   if (!existsSync(defectsArg)) {
     inputErrors.push(`缺陷文件不存在: ${defectsArg}`);
   } else {
-    let defects;
-    try {
-      defects = JSON.parse(readFileSync(defectsArg, "utf-8"));
-    } catch (e) {
-      inputErrors.push(`缺陷 JSON 解析失败: ${e.message}`);
-    }
-    if (defects !== undefined && !Array.isArray(defects)) {
+    const { data: defects, error } = readJsonFile(defectsArg);
+    if (error) {
+      inputErrors.push(`缺陷 JSON 解析失败: ${error}`);
+    } else if (!Array.isArray(defects)) {
       inputErrors.push("缺陷文件必须是 JSON 数组: [{ severity, status, module }, ...]");
-    }
-
-    if (Array.isArray(defects)) {
-      const weights = { fatal: 10, critical: 3, general: 1, minor: 0.1 };
-      const counts = { fatal: 0, critical: 0, general: 0, minor: 0 };
-      const byModule = {};
-
-      for (const d of defects) {
-        if (counts[d.severity] !== undefined) counts[d.severity]++;
-        const mod = d.module || "_unknown";
-        if (!byModule[mod]) byModule[mod] = { fatal: 0, critical: 0, general: 0, minor: 0, di: 0 };
-        if (byModule[mod][d.severity] !== undefined) byModule[mod][d.severity]++;
-      }
-
-      const di = counts.fatal * 10 + counts.critical * 3 + counts.general * 1 + counts.minor * 0.1;
-      const diDensity = caseCount > 0 ? di / caseCount : di;
-
-      for (const [mod, c] of Object.entries(byModule)) {
-        c.di = c.fatal * 10 + c.critical * 3 + c.general * 1 + c.minor * 0.1;
-      }
-
-      const openCritical = defects.filter((d) => d.severity === "critical" && d.status !== "closed").length;
-      const openFatal = defects.filter((d) => d.severity === "fatal" && d.status !== "closed").length;
-
+    } else {
+      const auditModuleUrl = pathToFileURL(resolve(__dirname, "../lib/test-codegen.js")).href;
+      const { calculateDI } = await import(auditModuleUrl);
+      const di = calculateDI(defects, caseCount);
+      const mc = di.releaseChecks.moduleConvergence;
       allChecks.push(
         {
           name: "DI 密度 < 0.3",
-          pass: diDensity < 0.3,
-          detail: `DI=${di.toFixed(1)}, 密度=${diDensity.toFixed(3)}`,
+          pass: di.releaseChecks.diDensity.pass,
+          detail: `DI=${di.di.toFixed(1)}, 密度=${di.diDensity.toFixed(3)}`,
         },
         {
           name: "致命缺陷全部关闭",
-          pass: openFatal === 0,
-          detail: `未关闭: ${openFatal}`,
+          pass: di.releaseChecks.fatalClosed.pass,
+          detail: `未关闭: ${defects.filter((d) => d.severity === "fatal" && d.status !== "closed").length}`,
         },
         {
           name: "严重缺陷全部关闭",
-          pass: openCritical === 0,
-          detail: `未关闭: ${openCritical}`,
+          pass: di.releaseChecks.criticalClosed.pass,
+          detail: `未关闭: ${defects.filter((d) => d.severity === "critical" && d.status !== "closed").length}`,
         },
         {
           name: "最差模块 DI 收敛 ≤20%",
-          pass: checkModuleConvergence(byModule, di),
-          detail: getWorstModule(byModule),
+          pass: mc.pass,
+          detail: mc.worstModule ? `最差: ${mc.worstModule.module} (DI=${mc.worstModule.di.toFixed(1)})` : "无模块数据",
         },
       );
-      void weights;
     }
   }
 }
@@ -144,19 +122,17 @@ if (smokeArg) {
   if (!existsSync(smokeArg)) {
     inputErrors.push(`冒烟结果文件不存在: ${smokeArg}`);
   } else {
-    try {
-      const smoke = JSON.parse(readFileSync(smokeArg, "utf-8"));
-      if (typeof smoke.passRate !== "number") {
-        inputErrors.push("冒烟结果 JSON 必须包含数值字段 passRate（可由 run-api --json 输出）");
-      } else {
-        allChecks.push({
-          name: "冒烟通过率 ≥ 95%",
-          pass: smoke.passRate >= 95,
-          detail: `通过率: ${smoke.passRate}%`,
-        });
-      }
-    } catch (e) {
-      inputErrors.push(`冒烟结果 JSON 解析失败: ${e.message}`);
+    const { data: smoke, error } = readJsonFile(smokeArg);
+    if (error) {
+      inputErrors.push(`冒烟结果 JSON 解析失败: ${error}`);
+    } else if (typeof smoke?.passRate !== "number") {
+      inputErrors.push("冒烟结果 JSON 必须包含数值字段 passRate（可由 run-api --json 输出）");
+    } else {
+      allChecks.push({
+        name: "冒烟通过率 ≥ 95%",
+        pass: smoke.passRate >= 95,
+        detail: `通过率: ${smoke.passRate}%`,
+      });
     }
   }
 }
@@ -184,16 +160,3 @@ for (const c of allChecks) {
 
 console.log(`\n${allPass ? "✅ 质量门通过，允许上线" : "❌ 质量门未通过，阻断上线"}\n`);
 process.exit(allPass ? 0 : 1);
-
-// ── 辅助函数 ────────────────────────────────────
-function checkModuleConvergence(byModule, totalDI) {
-  if (Object.keys(byModule).length === 0 || totalDI === 0) return true;
-  const maxModuleDI = Math.max(...Object.values(byModule).map((m) => m.di));
-  return maxModuleDI / totalDI <= 0.2 || maxModuleDI <= 3;
-}
-
-function getWorstModule(byModule) {
-  if (Object.keys(byModule).length === 0) return "无模块数据";
-  const worst = Object.entries(byModule).sort((a, b) => b[1].di - a[1].di)[0];
-  return `最差: ${worst[0]} (DI=${worst[1].di.toFixed(1)})`;
-}

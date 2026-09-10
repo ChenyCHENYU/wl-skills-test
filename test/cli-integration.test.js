@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CLI 集成测试 — 通过 bin 入口真实执行子命令，拦截"lib 层全绿但 CLI 崩溃"的回归
  */
 import { test } from "node:test";
@@ -12,6 +12,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BIN = join(__dirname, "..", "bin", "wl-skills-test.js");
 const TMP = join(process.cwd(), ".tmp-cli-test");
 
+// Windows 下 spawn 句柄/杀软扫描可能短暂占用目录，rmSync 需重试容错
+function rmForce(p) {
+  for (let i = 0; i < 5; i++) {
+    try {
+      rmSync(p, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+      return;
+    } catch {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200); // sleep 200ms
+    }
+  }
+}
+
 function runCli(args, opts = {}) {
   return spawnSync(process.execPath, [BIN, ...args], {
     encoding: "utf-8",
@@ -21,7 +33,7 @@ function runCli(args, opts = {}) {
 }
 
 function setupTmp() {
-  if (existsSync(TMP)) rmSync(TMP, { recursive: true, force: true });
+  if (existsSync(TMP)) rmForce(TMP);
   mkdirSync(TMP, { recursive: true });
 }
 
@@ -54,9 +66,9 @@ test("CLI: --version 输出包版本", () => {
   assert.ok(/\d+\.\d+\.\d+/.test(r.stdout));
 });
 
-test("CLI: run-gen 无参数显示用法（不崩溃）", () => {
+test("CLI: run-gen 无参数显示用法并以退出码 2 结束（用法错误）", () => {
   const r = runCli(["run-gen"]);
-  assert.equal(r.status, 0, `stderr: ${r.stderr}`);
+  assert.equal(r.status, 2, `stderr: ${r.stderr}`);
   assert.ok(r.stdout.includes("用法"), "应输出用法说明");
 });
 
@@ -79,7 +91,7 @@ test("CLI: run-gen --type cases 生成用例 Markdown", () => {
     assert.ok(md.includes("TC-001"));
     assert.ok(md.includes("| 序号 |"));
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -94,7 +106,7 @@ test("CLI: run-gen --type jmeter 生成 jmx", () => {
     assert.ok(existsSync(output));
     assert.ok(readFileSync(output, "utf-8").includes("<jmeterTestPlan"));
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -127,7 +139,7 @@ test("CLI: run-gen --type e2e 生成脚手架", () => {
       assert.ok(existsSync(join(outDir, f)), `应生成 ${f}`);
     }
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -149,7 +161,7 @@ test("CLI: e2e-check 对生成脚手架通过，注入 test.only 后拦截", asy
     assert.notEqual(bad.status, 0);
     assert.ok((bad.stdout + bad.stderr).includes("test.only"));
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -164,7 +176,7 @@ test("CLI: audit 审计不通过时非零退出（CI 卡门）", () => {
     const r = runCli(["audit", "--target", TMP]);
     assert.notEqual(r.status, 0, "存在 error 级违规时应非零退出");
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -179,7 +191,7 @@ test("CLI: audit 审计通过时零退出", () => {
     const r = runCli(["audit", "--target", TMP]);
     assert.equal(r.status, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -193,7 +205,7 @@ test("CLI: fix --dry-run 不写文件", () => {
     assert.equal(r.status, 0, `stderr: ${r.stderr}`);
     assert.equal(readFileSync(bad, "utf-8"), original, "dry-run 不应修改文件");
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -204,14 +216,23 @@ test("CLI: init --dry-run 不写文件", () => {
     assert.equal(r.status, 0, `stderr: ${r.stderr}`);
     assert.ok(r.stdout.includes("预览"));
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
 test("CLI: doctor 正常退出", () => {
-  const r = runCli(["doctor"]);
-  assert.equal(r.status, 0, `stderr: ${r.stderr}`);
-  assert.ok(r.stdout.includes("环境体检"));
+  setupTmp();
+  // doctor 必需项含 .github/standards 与 .github/skills 目录，构造合法环境
+  mkdirSync(join(TMP, ".github", "standards"), { recursive: true });
+  mkdirSync(join(TMP, ".github", "skills"), { recursive: true });
+  try {
+    const r = runCli(["doctor"], { cwd: TMP });
+    assert.equal(r.status, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
+    assert.ok(r.stdout.includes("环境体检"));
+    assert.ok(r.stdout.includes("环境就绪"));
+  } finally {
+    rmForce(TMP);
+  }
 });
 
 test("CLI: 未知命令非零退出", () => {
@@ -228,8 +249,8 @@ test("CLI: gate 聚合卡门（通过场景零退出）", () => {
     assert.equal(r.status, 0, `stdout: ${r.stdout}`);
     assert.ok(r.stdout.includes("质量门通过"));
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
-    rmSync(join(process.cwd(), "test-reports"), { recursive: true, force: true });
+    rmForce(TMP);
+    rmForce(join(process.cwd(), "test-reports"));
   }
 });
 
@@ -261,7 +282,7 @@ test("CLI: report 自动发现 + 索引 + 历史产出（test-reports/ 目录约
     const md2 = readFileSync(join(reportsDir, "测试报告.md"), "utf-8");
     assert.ok(md2.includes("运行趋势"), "第二次运行应含趋势");
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -282,7 +303,7 @@ test("CLI: audit 默认产出审计维度报告到 test-reports/", () => {
     assert.ok(md.includes("测试代码审计报告"));
     assert.ok(md.includes("T1-T25"));
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -301,7 +322,7 @@ test("CLI: run-gen --granularity field 生成细粒度用例", () => {
     assert.ok(md.includes("run-api"), "应标注 DAG 执行映射");
     assert.ok(r.stdout.includes("细粒度"), "控制台应提示细粒度统计");
   } finally {
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
 
@@ -341,6 +362,6 @@ test("CLI: report --webhook 推送结论到指定地址", async () => {
     assert.ok(JSON.stringify(received).includes("上线条件"));
   } finally {
     server.close();
-    rmSync(TMP, { recursive: true, force: true });
+    rmForce(TMP);
   }
 });
