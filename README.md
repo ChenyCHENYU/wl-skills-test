@@ -6,14 +6,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.24.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.25.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-13-purple.svg" />
   <img src="https://img.shields.io/badge/MCP-19-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
   <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-265%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/tests-268%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -437,7 +437,7 @@ wl-skills-test/
 | 性能基线 | 1 命令 | perf-compare 劣化判定（CI 非零退出） |
 | 报告聚合 | 1 命令 | report 对齐规范 10 模板 + 上线判定 |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元+集成测试 | 265 | 全部通过（含 mock 后端集成/沙箱模拟跑/CLI/MCP stdio/e2e-check/报告体系/引擎与生成器回归） |
+| 单元+集成测试 | 268 | 全部通过（含 mock 后端集成/沙箱模拟跑/CLI/MCP stdio/e2e-check/报告体系/引擎与生成器回归） |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
