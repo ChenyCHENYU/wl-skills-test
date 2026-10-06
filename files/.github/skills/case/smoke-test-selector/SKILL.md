@@ -65,7 +65,7 @@ metadata:
 3. 每季度/用例库大版本更新时，重新按本规则筛选，更新套件。
 4. 套件文件头部必须包含：筛选日期、版本号、用例总数、覆盖模块清单。
 
-> **文件输出规范**：输出的 `.md` 文件以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../standards/` 及 `../test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：输出的 `.md` 文件以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../../standards/` 及 `../test-case-generator/references/windows-output-best-practices.md`。
 
 ## 输出格式
 

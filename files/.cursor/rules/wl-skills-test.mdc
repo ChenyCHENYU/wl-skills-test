@@ -1,3 +1,8 @@
+---
+description: "按需调用 wl-skills-test 测试技能"
+alwaysApply: false
+---
+
 @agile-team/wl-skills-test
 
 测试工程 AI 技能包。安装后 AI 编辑器自动识别 `.github/skills/` 下的 12 个测试 Skill 和 `.github/standards/` 下的 11 条规范。

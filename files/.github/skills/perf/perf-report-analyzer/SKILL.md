@@ -240,4 +240,4 @@ jmeter -n -t script.jmx -l result.jtl -e -o ./report
 
 **超大规模（>10GB）**：分布式压测环境下，建议使用 InfluxDB + Grafana 实时监控，或 Backend Listener 推送结果到时序数据库，改为读取 InfluxDB 查询结果进行分析。
 
-> **文件输出规范**：输出的 `.md` 报告以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../standards/` 及 `../case/test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：输出的 `.md` 报告以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../../standards/` 及 `../../case/test-case-generator/references/windows-output-best-practices.md`。

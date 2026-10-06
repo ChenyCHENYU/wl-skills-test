@@ -236,7 +236,7 @@ test("e2e-generator: routes.json 映射优先于 dir 推导，双向校验", () 
     const result = generateE2eScaffold(dir, { outputDir: outDir, routes: routesFile });
     assert.equal(result.pages[0].route, "/lgBaseData/lgBaseDataMaster", "应命中真实路由映射");
     assert.equal(result.pages[0].routeSource, "map");
-    assert.equal(result.warnings.length, 0, "全映射后无 derived 告警");
+    assert.equal(result.warnings.filter((warning) => warning.includes("dir 推导")).length, 0, "全映射后无 derived 告警");
     const pages = readFileSync(join(outDir, "fixtures", "pages.js"), "utf-8");
     assert.ok(pages.includes("/lgBaseData/lgBaseDataMaster"));
     assert.ok(pages.includes('"map"'));

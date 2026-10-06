@@ -280,7 +280,7 @@ DI密度 = DI ÷ 模块用例数（排除模块规模干扰）
 | 最差模块收敛度 | 末轮最差模块DI ÷ 首轮该模块DI × 100% | ≤20% | 当初最烂的模块至少也要修掉80% |
 ```
 
-> **文件输出规范**：输出的 `.md` 报告以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../standards/` 及 `../case/test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：输出的 `.md` 报告以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../../standards/` 及 `../../case/test-case-generator/references/windows-output-best-practices.md`。
 
 ## 报告写作原则
 

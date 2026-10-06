@@ -255,4 +255,4 @@ jmeter -n -t [脚本名].jmx --validate
 - `references/perfmon-compatibility.md`：PerfMon 与 JMeter 5.6.3 兼容性问题及正确 XML 格式
 - `references/stepping-thread-group.md`：Stepping Thread Group 正确属性名及常见错误
 
-> **文件输出规范**：输出的 `.jmx`/`.md` 文件以正确结构开头。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../standards/` 及 `../case/test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：输出的 `.jmx`/`.md` 文件以正确结构开头。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../../standards/` 及 `../../case/test-case-generator/references/windows-output-best-practices.md`。

@@ -1,16 +1,16 @@
 {
   "name": "@agile-team/wl-skills-test",
-  "version": "0.25.0",
-  "description": "测试工程 AI 技能包 — 11 条规范、12 个 Skill、17 个 MCP 工具、深度接口/E2E/性能测试、细粒度用例生成、test-reports 统一报告体系（自动发现+历史趋势）",
+  "version": "0.26.0",
+  "description": "测试工程 AI 技能包 — 11 条规范、13 个 Skill、19 个 MCP 工具、深度接口/E2E/性能测试、细粒度用例生成、test-reports 统一报告体系（自动发现+历史趋势）",
   "type": "module",
   "main": "./lib/index.js",
   "bin": {
     "wl-skills-test": "bin/wl-skills-test.js"
   },
   "scripts": {
-    "test": "node --test test/*.test.js",
-    "verify": "node --test test/*.test.js",
-    "prepublishOnly": "node --test test/*.test.js"
+    "test": "node scripts/run-tests.mjs",
+    "verify": "node scripts/run-tests.mjs",
+    "prepublishOnly": "node scripts/run-tests.mjs"
   },
   "files": [
     "bin/",

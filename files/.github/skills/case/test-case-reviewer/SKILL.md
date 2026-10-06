@@ -256,7 +256,7 @@ metadata:
 ### 7.4 用例集优化建议
 ```
 
-> **文件输出规范**：输出的 `.md` 文件以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../standards/` 及 `../test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：输出的 `.md` 文件以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../../standards/` 及 `../test-case-generator/references/windows-output-best-practices.md`。
 
 ## Common Pitfalls
 

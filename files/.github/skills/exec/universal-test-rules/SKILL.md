@@ -317,7 +317,7 @@ for (const name of cleanNames) {
 // 见第三节「页面完整闭环测试流程」
 ```
 
-> **文件输出规范**：输出的 `.md` 文件以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../standards/` 及 `../case/test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：输出的 `.md` 文件以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../../standards/` 及 `../../case/test-case-generator/references/windows-output-best-practices.md`。
 
 ## Common Pitfalls
 

@@ -6,14 +6,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.25.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.26.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-13-purple.svg" />
   <img src="https://img.shields.io/badge/MCP-19-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
   <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-268%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/tests-291%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -41,7 +41,7 @@ design ──→ kit ──→ ui ──→ bd ──→ test
 ## 📦 安装
 
 ```bash
-# 全量安装到当前项目（11 规范 + 12 Skill + 模板 + 9 编辑器配置）
+# 全量安装到当前项目（11 规范 + 13 Skill + 模板 + 编辑器原生规则）
 npx @agile-team/wl-skills-test
 
 # 预览将写入哪些文件
@@ -83,6 +83,15 @@ npx @agile-team/wl-skills-test report --api smoke.json --playwright playwright-r
 ```
 
 安装后，AI 编辑器自动识别 `.github/skills/` 下的 13 个 Skill 和 `.github/standards/` 下的 11 条规范。
+
+安装与更新先检查完整计划，包括文件及父目录的类型冲突。项目原有文件不因内容相同而自动归属本包；遇到未登记冲突时整体停止，`--force` 只可更新已登记的本包单元。`.wl-skills-test/manifest.json` 保存上次安装基线，事务失败会回滚；覆盖前的副本保存在 `.wl-skills-test/backups/`。
+
+共享的 AGENTS、CLAUDE、Copilot、技能索引、规范索引和流水线使用 `<!-- wl-skills-test:begin -->` / `<!-- wl-skills-test:end -->` 区块。更新只修改自己的区块，MCP 只修改 `mcpServers.wl-skills-test`，保留其他包、用户内容及有效 JSONC 注释。MCP 归属同时记录实际节点文本哈希，用户仅在本包 server 内加入注释也会识别为本地修改。`clean` 只移除登记且未被修改的本包文件或区块，不删除共享目录；本地修改及其归属记录继续保留。
+
+编辑器规则使用包专属文件，例如 `.cursor/rules/wl-skills-test.mdc` 和 `.kiro/steering/wl-skills-test.md`。旧版本包普通文件迁入相应目录下的 `wl-skills-test.legacy.*`，原内容及覆盖前副本保留，`clean` 不删除这些历史内容。外来普通文件阻挡目录时报告冲突，不自动转换。短语路由资料改为 `.github/skills/_route-evals.test.json`，保留原通用文件供其他包使用。
+
+能力边界见 [lib/capabilities.json](lib/capabilities.json)。单包可从需求独立设计测试。页面规格未提供 API 契约时，仍生成 UI 交互、浏览器和只读 E2E 场景；逻辑操作不带猜测的方法或接口路径，API 执行与性能脚本生成会提示补真实契约，依赖 API 校验及清理的 E2E 写入组保持跳过。声明 `page-spec.apiContract` 时，按页面规格所在目录读取真实 API 契约，不再从页面路由猜接口。该引用支持 JSON 或含 `wl-api-contract` 代码块的 `api.md`；多区块文档用 `./api.md#contractId` 或 `{ "path": "./api.md", "contractId": "..." }` 明确选择，坏引用及未知 schema/protocol 拒绝执行。BD 内部契约独立使用时保留默认约定；项目有 `.wl-skills-bd/contracts/wl-delivery-profile.v1.json` 时按该 profile 的方法、路径、成功码和分页解析；显式 profile 必须具备合法的五类标准操作、响应信封与完整分页配置，缺项时拒绝，库调用也可显式传入 `consumeContract(path, { deliveryProfile })`。
+
 
 ---
 
@@ -310,10 +319,12 @@ e2e/
 
 ---
 
-## 🔧 17 个 MCP 工具
+## 🔧 19 个 MCP 工具
 
 | 工具 | 用途 |
 |------|------|
+| `wls_test_contract_diff` | 契约变更影响面分析及受影响用例清单 |
+| `wls_test_gen_contract` | 从 OpenAPI/Swagger 生成测试契约 |
 | `wls_test_standards` | 查询测试规范（按编号或名称） |
 | `wls_test_contract_read` | 读取 kit/bd 契约，提取可测试资源 |
 | `wls_test_case_generate` | 按契约+需求生成测试用例 |
@@ -376,7 +387,8 @@ wl-skills-test/
 │   ├── index.js                   # 命令注册表 + run() 路由（薄层）
 │   ├── cli/                       # CLI 分层（v0.12.0 拆分）
 │   │   ├── args.js                # 参数解析（布尔归一）
-│   │   ├── installer.js           # init/update/clean（占位符版本比对）
+│   │   ├── installer.js           # init/update/clean（归属清单、预检与事务）
+│   │   ├── install-state.js       # 安装基线、共享贡献、冲突保护与回滚
 │   │   ├── system.js              # doctor/validate
 │   │   ├── webhook.js             # 质量门/报告结论推送
 │   │   └── commands/              # generation / execution / quality / reports
@@ -385,7 +397,7 @@ wl-skills-test/
 │   │   ├── types.js               # 契约字段类型分类器（生成/执行同口径）
 │   │   └── thresholds.js          # 质量阈值常量（95%/DI 0.3/收敛 ≤20% 等）
 │   ├── report/dimensions.js       # 报告维度注册表（新增维度 = 注册一个对象）
-│   ├── contract-consumer.js       # 契约消费（kit/bd/page-spec 三格式 + 路由推导 + toolbar 操作推断）
+│   ├── contract-consumer.js       # 三格式契约、项目 Profile 与独立页面 UI 意图消费
 │   ├── test-codegen.js            # 用例生成 + DI（含模块收敛）+ 冒烟 + Markdown
 │   ├── case-fine-gen.js           # 细粒度用例（FG 内容哈希稳定 ID + dimension 映射）
 │   ├── test-data-factory.js       # 测试数据工厂（枚举/约束/类型/字段名语义）
@@ -413,10 +425,10 @@ wl-skills-test/
 │   ├── .github/standards/         # 11 条规范
 │   ├── .github/skills/            # 13 个 Skill（6 组，含 test-onboarding 接入引导）
 │   ├── .mcp.json                  # MCP 配置
-│   └── 9 个编辑器适配文件
+│   └── 编辑器原生规则目录与共享指令
 ├── .github/workflows/ci.yml       # 包自身 CI（双 OS × Node 20/22 + npm pack 校验 + 自动发布）
 ├── docs/                          # 架构设计 + 分析文档
-└── test/                          # 209 个测试（单元 + CLI 集成 + 自一致性 + MCP stdio + 引擎/生成器回归）
+└── test/                          # 291 个测试（单元 + CLI 集成 + 自一致性 + MCP stdio + 引擎/生成器回归）
 ```
 
 ---
@@ -426,8 +438,8 @@ wl-skills-test/
 | 维度 | 数量 | 说明 |
 |------|:----:|------|
 | 测试规范 | 11 | 对齐在线 QC 流程规范（另以 MCP resources 只读暴露） |
-| AI Skill | 12 | 功能链 9 + 性能链 3 |
-| MCP 工具 | 17 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
+| AI Skill | 13 | 功能链 9 + 性能链 3 + 接入引导 1 |
+| MCP 工具 | 19 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
 | 审计规则 | 25 | T1-T25 确定性扫描器（T3/T4 块级精确解析 + T21-T25 E2E 工程约束） |
 | 自动修复 | 6 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码/afterEach/测试名） |
 | 执行器 | 3 | run-api（HTTP）/ run-playwright / run-jmeter + jtl 解析 |
@@ -486,7 +498,7 @@ wl-skills-test/
 | 规范审计引擎 | R1-R16 (AST) | B1-B29 | R001-R039 (39条) | **T1-T20** | ✅ 已补齐 |
 | 自动修复 | safe-fix (F1-F5) | code-fix-be (B3/B5) | fix (12条) | **F1-F6** | ✅ 已补齐 |
 | 质量门对象 | 源码本身 | 源码本身 | 源码本身 | **外部 DI + 内部审计** | ✅ 已增强 |
-| MCP 工具数 | 23 | 16 | 10 | **17** | 🟡 可继续扩展 |
+| MCP 工具数 | 23 | 16 | 10 | **19** | 🟡 可继续扩展 |
 | 确定性 vs AI 驱动 | 确定性 | 确定性 | 确定性 | **确定性+AI** | ✅ 已补齐 |
 | 执行能力 | ❌ | ❌ | ❌ | **API/UI/性能执行 ✅** | ✅ 领先 |
 
@@ -553,6 +565,7 @@ wl-skills-test/
 | v0.13.0 | 引擎层：jtl 流式解析（直方图分位数）+ run-api 幂等读重试 + 负例/权限并行 + 执行器异步化防注入 + 审计规则表驱动（T13/T14/T18 精准化） |
 | v0.14.0 | 生成器精准化：FG 内容哈希稳定 ID + 基线↔细粒度去重 + 逐字段负例（上限 8）+ dimensionCoverage 追溯 + UI 适配层补漏（校验/自定义注入/泄漏修复）+ 路由归一 |
 | **v0.15.0** | **收口：write-guard 字节级回滚并接线 CLI/MCP 写路径（fix 带 root 约束）+ plan-hash 归一化 + 文档口径与代码一致（工具数/结构/测试数单一事实源）** |
+| **v0.26.0** | **独立测试能力保留；安装归属与事务保护、编辑器目录隔离、共享贡献保真、项目 Profile 真实消费；页面无 API 契约时保留 UI 场景并明确接口事实未决** |
 
 ---
 

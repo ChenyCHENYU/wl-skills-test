@@ -75,7 +75,7 @@ metadata:
 6. 输出的测试用例直接形成markdown文件
 7. 输出文件不是SKILL.md，不要用`---` YAML前导符包裹文档头部信息（如`---\n用例文档：xxx\nn---`），因为内部平铺中文文本不是合法YAML，会导致部分Markdown解析器拒绝渲染。正确做法：直接以`# 文档标题` H1级标题开头，头部信息用`>`引用块或`---`分隔线表示。
 
-> **参考文件**：`references/windows-output-best-practices.md` 包含 Windows 上生成 Markdown 文件的完整规范（UTF-8 BOM / 前导符 / 命名 / 结构）；通用测试流程与用例标准参见 `../../standards/`。
+> **参考文件**：`references/windows-output-best-practices.md` 包含 Windows 上生成 Markdown 文件的完整规范（UTF-8 BOM / 前导符 / 命名 / 结构）；通用测试流程与用例标准参见 `../../../standards/`。
 
 ## Common Pitfalls
 

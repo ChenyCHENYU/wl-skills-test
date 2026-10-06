@@ -142,7 +142,7 @@ metadata:
 | 优先级 | 仅高/中/低，不使用P0/P1标记 |
 | 输出排版 | Markdown纯文本，表格清晰，无表情、网络口语 |
 
-> **文件输出规范**：输出的 `.md` 文件以 `# 文档标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据（内部中文非合法 YAML，会导致部分解析器拒绝渲染）。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../standards/` 及 `../case/test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：输出的 `.md` 文件以 `# 文档标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据（内部中文非合法 YAML，会导致部分解析器拒绝渲染）。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../../standards/` 及 `../../case/test-case-generator/references/windows-output-best-practices.md`。
 
 ## 五、输出约束规则
 

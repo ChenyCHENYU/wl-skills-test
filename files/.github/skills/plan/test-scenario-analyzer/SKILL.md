@@ -227,7 +227,7 @@ metadata:
 8. 输出完成后，末尾附一句："以上业务场景已覆盖文档显性需求与常见隐性风险点，可作为测试用例设计基线，建议结合具体测试数据分析补充"
 9. 输出文件不是SKILL.md，不要用`---` YAML前导符包裹文档头部信息。直接以`# 文档标题` H1级标题开头。`---`内部如果放平铺中文文本而非合法YAML键值对，会导致部分Markdown解析器拒绝渲染。
 
-> **文件输出规范**：Windows 文件编码（UTF-8 BOM、无 YAML 前导符）统一遵循 `../../standards/` 及 `../case/test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：Windows 文件编码（UTF-8 BOM、无 YAML 前导符）统一遵循 `../../../standards/` 及 `../../case/test-case-generator/references/windows-output-best-practices.md`。
 
 ## 六、与测试用例生成技能的衔接说明
 

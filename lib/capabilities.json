@@ -1,0 +1,40 @@
+{
+  "boundaryVersion": 1,
+  "package": "@agile-team/wl-skills-test",
+  "capabilities": [
+    {
+      "id": "testing.delivery",
+      "intents": [
+        "plan",
+        "generate",
+        "validate",
+        "execute",
+        "review"
+      ],
+      "inputs": [
+        "reviewed-requirements",
+        "wl-api-contract",
+        "wl-contract",
+        "page-spec"
+      ],
+      "outputs": [
+        "test-cases",
+        "test-scripts",
+        "test-reports"
+      ]
+    }
+  ],
+  "standalone": {
+    "requiresSiblingPackages": [],
+    "missingBusinessFacts": "report-unresolved",
+    "projectInputsOwnedBy": "project"
+  },
+  "composition": {
+    "contributionId": "wl-skills-test",
+    "protocolVersion": "1.0",
+    "optionalTraceInput": "design-model",
+    "unknownProtocol": "reject-or-explicit-migration",
+    "apiAuthority": "validated-effective-api-manifest",
+    "sharedWrites": "own-block-or-json-entry-only"
+  }
+}

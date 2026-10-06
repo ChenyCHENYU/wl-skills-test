@@ -1,6 +1,6 @@
 # Skill 触发词路由表
 
-> 所有 Skill 通过 `_route-evals.json` 的短语边界匹配自动触发，此文件为人读索引。
+> 所有 Skill 通过 `_route-evals.test.json` 的短语边界匹配自动触发，此文件为人读索引。
 
 ## 功能测试链
 

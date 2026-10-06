@@ -98,7 +98,7 @@ metadata:
 | TC-005 | 客户管理 | 前置数据不存在 |
 ```
 
-> **文件输出规范**：输出的 `.md` 报告以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../standards/` 及 `../case/test-case-generator/references/windows-output-best-practices.md`。
+> **文件输出规范**：输出的 `.md` 报告以 `# 标题` H1 开头，不要用 `---` YAML 前导符包裹头部中文元数据。Windows 文件编码（UTF-8 BOM 等）统一遵循 `../../../standards/` 及 `../../case/test-case-generator/references/windows-output-best-practices.md`。
 
 ## Common Pitfalls
 
