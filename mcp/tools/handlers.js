@@ -19,6 +19,8 @@ import { diffContracts } from "../../lib/contract-diff.js";
 import { renderHtmlReport } from "../../lib/report/html.js";
 import { importOpenApi } from "../../lib/swagger-import.js";
 import { readJsonFile, checkCommandAvailable, writeTextFile } from "../../lib/shared/utils.js";
+import { observe, observeSync } from "../../lib/observed-execution.js";
+import { planTask, taskStatus, hostDiagnostic } from "../../lib/cli/commands/tasks.js";
 import { compactApiResult, compactAuditResult, compactReportResult } from "../../lib/shared/compact.js";
 import { computePlanHash } from "../../lib/plan-hash.js";
 import { confirmAndWrite } from "../../lib/write-guard.js";
@@ -276,7 +278,7 @@ function checkCommand(cmd) {
 export function handleAudit(args) {
   const target = args.target || ".";
   if (!existsSync(target)) return { error: "目标路径不存在" };
-  const result = audit(target);
+  const result = observeSync("audit", args, [target], () => audit(target));
   if (result.error) return result;
   // token 经济学：默认紧凑摘要（分布 + TopN 违规 + 修复入口）；detail:"full" 才回全量 findings
   if (args.detail === "full") return result;
@@ -357,7 +359,7 @@ export async function handleRunApi(args) {
   if (!contractPath || !existsSync(contractPath)) {
     return { error: "需要 contractPath 参数" };
   }
-  const result = await runApiTests({
+  const result = await observe("run-api", args, [contractPath, args.dictFile], () => runApiTests({
     contractPath,
     baseUrl: baseUrl || "http://localhost:8080",
     token,
@@ -366,7 +368,7 @@ export async function handleRunApi(args) {
     lenientCoercion: args.lenientCoercion === true,
     permWriteProbe: args.permWriteProbe === true,
     auth: args.auth && typeof args.auth === "object" ? args.auth : null,
-  });
+  }));
   if (result.error) return result;
   // token 经济学：默认紧凑摘要（结论 + 失败 TopN + 诊断指引）；
   // 全量结果（含报文快照数十 KB）写文件或 detail:"full" 按需取
@@ -380,12 +382,12 @@ export async function handleRunApi(args) {
 
 // ── wls_test_run_playwright ────────────────────
 export async function handleRunPlaywright(args) {
-  return runPlaywright({ testDir: args.testDir || "./tests" });
+  return observe("run-playwright", args, [args.testDir || "./tests"], () => runPlaywright({ testDir: args.testDir || "./tests" }));
 }
 
 // ── wls_test_run_jmeter ────────────────────────
 export async function handleRunJmeter(args) {
-  return runJmeter({ jmxPath: args.jmxPath, threads: args.threads || 100 });
+  return observe("run-jmeter", args, [args.jmxPath], () => runJmeter({ jmxPath: args.jmxPath, threads: args.threads || 100 }));
 }
 
 // ── wls_test_e2e_generate ──────────────────────
@@ -419,6 +421,7 @@ export function handleE2eGenerate(args) {
 // ── wls_test_report_generate ───────────────────
 export function handleReportGenerate(args) {
   const result = generateReport({
+    projectRoot: args.root || process.cwd(), runId: args.runId, strictCorrelation: true, allowLegacy: args.allowLegacy === true,
     api: args.api,
     playwright: args.playwright,
     jmeter: args.jmeter,
@@ -473,7 +476,7 @@ export function readStandardResource(uri) {
 
 // ── wls_test_e2e_check ─────────────────────────
 export async function handleE2eCheck(args) {
-  return e2eCheck(args.target || "./e2e");
+  return observe("e2e-check", args, [args.target || "./e2e"], () => e2eCheck(args.target || "./e2e"));
 }
 
 // ── wls_test_dict_sync ─────────────────────────
@@ -488,7 +491,7 @@ export async function handleDictSync(args) {
 
 // ── wls_test_gate ──────────────────────────────
 export async function handleGate(args) {
-  return runGate({
+  return observe("gate", args, [args.auditDir, args.e2eDir, args.smokeResult, args.defects, args.perfCurrent, args.perfBaseline], () => runGate({
     auditDir: args.auditDir,
     e2eDir: args.e2eDir,
     smokeResult: args.smokeResult,
@@ -498,10 +501,21 @@ export async function handleGate(args) {
     perfCurrent: args.perfCurrent,
     perfBaseline: args.perfBaseline,
     perfThreshold: args.perfThreshold !== undefined ? parseFloat(args.perfThreshold) || 15 : 15,
-  });
+  }));
+}
+
+export function handleTask(args) {
+  try {
+    const action = args.action || "task";
+    if (action === "status") return taskStatus(args);
+    if (action === "doctor-host") return hostDiagnostic(args);
+    if (!["task", "route", "explain"].includes(action)) return { error: "Unknown task action" };
+    return planTask({ task: args.task, root: args.root || process.cwd(), runId: args.runId, skill: args.skill, context: { files: args.files || [], domain: args.domain } }, action === "task");
+  } catch (error) { return { error: error.message }; }
 }
 
 export const HANDLERS = {
+  wls_test_task: handleTask,
   wls_test_standards: handleStandards,
   wls_test_contract_read: handleContractRead,
   wls_test_contract_diff: handleContractDiff,

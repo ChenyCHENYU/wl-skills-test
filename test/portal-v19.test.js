@@ -87,8 +87,8 @@ test("v19: CLI report --html 产出单文件 HTML", () => {
   mkdirSync(reportsDir, { recursive: true });
   writeFileSync(join(reportsDir, "api-result.json"), JSON.stringify({ summary: { entity: "X", total: 2, passed: 2, failed: 0, errors: 0, skipped: 0, passRate: 100, decision: "通过" } }));
   try {
-    const r = spawnSync(process.execPath, [BIN, "report", "--html"], { encoding: "utf-8", cwd: TMP, timeout: 30000 });
-    assert.equal(r.status, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
+    const r = spawnSync(process.execPath, [BIN, "report", "--html", "--allow-legacy"], { encoding: "utf-8", cwd: TMP, timeout: 30000 });
+    assert.equal(r.status, 1, `旧结果应生成诊断并保持未验证: ${r.stdout}\nstderr: ${r.stderr}`);
     const htmlPath = join(reportsDir, "测试报告.html");
     assert.ok(existsSync(htmlPath), "应产出 HTML 报告");
     assert.ok(readFileSync(htmlPath, "utf-8").includes("wl-data"));

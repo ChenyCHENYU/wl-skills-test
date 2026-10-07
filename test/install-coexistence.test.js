@@ -77,7 +77,7 @@ test('update uses the actual previous baseline; user changes stay conflicted wit
 
 test('force changes only own recorded Markdown block; clean preserves changed unit', (t) => {
   const root = tmp(t); install(root);
-  write(root, 'AGENTS.md', 'USER PREFIX\n' + read(root, 'AGENTS.md').replace('## 项目上下文', '## LOCAL CHANGE') + '\n<!-- wl-skills-bd:begin -->\nBD\n<!-- wl-skills-bd:end -->');
+  write(root, 'AGENTS.md', 'USER PREFIX\n' + read(root, 'AGENTS.md').replace('# wl-skills-test 任务入口', '# LOCAL CHANGE') + '\n<!-- wl-skills-bd:begin -->\nBD\n<!-- wl-skills-bd:end -->');
   const clean = createCleanPlan(root); assert.ok(clean.conflicts.some((item) => item.path === 'AGENTS.md'));
   const plan = createInstallPlan(root, { filesDir, force: true }); assert.deepEqual(plan.conflicts, []); applyInstallPlan(plan);
   assert.ok(read(root, 'AGENTS.md').startsWith('USER PREFIX\n'));
@@ -88,7 +88,7 @@ test('legacy file editor rules migrate without losing customized original rules'
   const root = tmp(t); const old = '@agile-team/wl-skills-test\n\nUSER LEGACY RULE\n';
   write(root, '.cursor', old); install(root);
   assert.equal(read(root, '.cursor/rules/wl-skills-test.legacy.mdc'), old);
-  assert.ok(read(root, '.cursor/rules/wl-skills-test.mdc').includes('alwaysApply: false'));
+  assert.ok(read(root, '.cursor/rules/wl-skills-test.mdc').includes('alwaysApply: true'));
   applyInstallPlan(createCleanPlan(root)); assert.equal(read(root, '.cursor/rules/wl-skills-test.legacy.mdc'), old);
 });
 

@@ -1,15 +1,13 @@
-# Agent — wl-skills-test
+# wl-skills-test 任务入口
 
-## 项目上下文
+本项目使用 `@agile-team/wl-skills-test`（v__WL_SKILLS_TEST_VERSION__），测试领域独立可用。
 
-本项目使用 `@agile-team/wl-skills-test`（v__WL_SKILLS_TEST_VERSION__）测试工程技能包，包含 11 条测试规范和 12 个 AI Skill。
+每次代码或测试任务先运行 `npx @agile-team/wl-skills-test task "<任务>" --json`，仅规划，不执行业务请求。只读取返回的 `skillPaths` 和 `requiredFiles`；13 个技能的权威触发清单是 `.wl-skills-test/routes.v1.json`，覆盖 onboarding/plan/case/exec/quality/perf。
 
-## 技能加载
+开工时简短说明 `matched / baseline / ambiguous / gap / not-applicable`、选定技能与约束。歧义先明确工作流；必要技能或规范缺失时报告 gap 和补充建议，不能声称约束就绪。普通代码任务只适用测试基线，不自动执行接口或压测。
 
-技能定义在 `.github/skills/` 下，分 5 组：plan / case / exec / quality / perf。
-触发词路由见 `.github/skills/_registry.md`。
+复用返回的 `runId`：实际执行 `audit / run-api / run-playwright / run-jmeter / e2e-check / gate` 时传 `--run-id`；结束用 `status --run-id <ID> --json` 分别报告执行状态与验证状态。报告只聚合同一 runId，未执行的检查保持未验证。
 
-## 规范约束
+`route`、`explain` 是只读路由；`doctor-host --host codex --json` 是静态入口诊断。文件存在、安装通过、模型自报均不能证明宿主已读取或遵循；宿主加载和行为证据未知时明确 unknown / unverified。技能命中不能替代真实 API 事实、执行授权、测试数据隔离与清理。
 
-测试规范在 `.github/standards/` 下（01-11），按任务类型自动加载。
-关键约束：冒烟通过率≥95%、DI 密度<0.3、1天50条用例。
+同一用户任务涉及多个已安装且适用的包时复用同一 `runId`（`--run-id` / `WL_TASK_RUN_ID`）；本包不依赖其他包，仍可独立使用。

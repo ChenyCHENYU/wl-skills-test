@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "package": "@agile-team/wl-skills-test",
+  "domain": "testing",
+  "minimumScore": 6,
+  "minimumLead": 3,
+  "baselineStandards": ["06-automation.md", "11-data-safety.md"],
+  "skills": [
+    { "id": "test-onboarding", "path": ".github/skills/onboarding/test-onboarding/SKILL.md", "phrases": ["接入测试", "上质量门禁", "接入 wl-skills-test", "让 AI 能跑测试", "接入接口测试", "onboard testing"], "exclude": ["不要接入测试", "不接入测试"], "standards": ["01-test-process.md", "11-data-safety.md"], "constraints": ["接入先探测项目与真实接口来源；凭据使用环境引用，不写明文"] },
+    { "id": "test-plan-generator", "path": ".github/skills/plan/test-plan-generator/SKILL.md", "phrases": ["生成测试方案", "编制测试计划", "测试方案", "测试计划", "test plan"], "exclude": ["不要生成测试方案", "不编制测试计划"], "standards": ["01-test-process.md", "04-strategy.md"], "constraints": ["需求事实缺失要列待补项，不编造业务事实"] },
+    { "id": "test-scenario-analyzer", "path": ".github/skills/plan/test-scenario-analyzer/SKILL.md", "phrases": ["分析业务场景", "梳理测试场景", "业务场景清单", "测试场景", "test scenarios"], "exclude": ["不要分析业务场景", "不是测试场景"], "standards": ["02-case-design.md", "03-case-method.md"], "constraints": ["按真实业务流程、权限和异常分支设计场景"] },
+    { "id": "test-case-generator", "path": ".github/skills/case/test-case-generator/SKILL.md", "phrases": ["生成测试用例", "编写用例", "功能用例", "接口用例", "单元测试", "单测", "unit tests", "test cases"], "exclude": ["不要生成测试用例", "不生成测试用例", "无需测试用例", "不要写单测"], "standards": ["02-case-design.md", "03-case-method.md"], "constraints": ["用例基于需求与实际接口；页面路由不能替代 API 事实"] },
+    { "id": "test-case-reviewer", "path": ".github/skills/case/test-case-reviewer/SKILL.md", "phrases": ["评审测试用例", "用例评审", "用例质量检查", "review test cases"], "exclude": ["代码评审", "PR review", "review code", "不要评审测试用例"], "standards": ["02-case-design.md", "03-case-method.md"], "constraints": ["评审默认只读，引用具体用例与覆盖缺口"] },
+    { "id": "smoke-test-selector", "path": ".github/skills/case/smoke-test-selector/SKILL.md", "phrases": ["筛选冒烟用例", "冒烟套件", "提取冒烟", "select smoke tests"], "exclude": ["不要筛选冒烟"], "standards": ["01-test-process.md", "05-smoke.md"], "constraints": ["选择真实核心流程，并保留纳入和排除依据"] },
+    { "id": "smoke-test-executor", "path": ".github/skills/exec/smoke-test-executor/SKILL.md", "phrases": ["执行冒烟测试", "冒烟执行", "冒烟报告", "run smoke tests"], "exclude": ["不要执行冒烟", "仅生成冒烟"], "standards": ["05-smoke.md", "11-data-safety.md"], "constraints": ["真实执行才给通过结论；写请求需明确授权与清理，缺 API 事实先补契约"] },
+    { "id": "test-script-generator", "path": ".github/skills/exec/test-script-generator/SKILL.md", "phrases": ["生成自动化脚本", "Playwright 脚本", "UI 自动化", "E2E", "自动化测试脚本", "playwright tests"], "exclude": ["不要生成自动化脚本", "不做 UI 自动化"], "standards": ["06-automation.md", "11-data-safety.md"], "constraints": ["UI 可独立生成；API 脚本只能使用真实声明的方法与路径，保留执行和跳过证据"] },
+    { "id": "universal-test-rules", "path": ".github/skills/exec/universal-test-rules/SKILL.md", "phrases": ["自动化测试规则", "通用测试规则", "测试执行规范", "test execution rules"], "exclude": ["不是测试规则"], "standards": ["06-automation.md", "11-data-safety.md"], "constraints": ["断言真实行为，隔离测试数据，并明确哪些检查未执行"] },
+    { "id": "test-quality-analyzer", "path": ".github/skills/quality/test-quality-analyzer/SKILL.md", "phrases": ["质量评估", "DI 分析", "缺陷指数", "上线判定", "测试质量门", "quality gate"], "exclude": ["不要质量评估", "代码风格检查"], "standards": ["01-test-process.md", "08-quality-gate.md", "09-defect-mgmt.md"], "constraints": ["完成执行不等于验证通过；未执行维度不能默认为通过"] },
+    { "id": "perf-plan-generator", "path": ".github/skills/perf/perf-plan-generator/SKILL.md", "phrases": ["性能测试方案", "压测方案", "perf 方案", "performance test plan"], "exclude": ["不要压测", "不做性能测试"], "standards": ["07-performance.md", "11-data-safety.md"], "constraints": ["压测目标、环境、SLA 与数据来自明确要求，计划不授权发请求"] },
+    { "id": "perf-script-generator", "path": ".github/skills/perf/perf-script-generator/SKILL.md", "phrases": ["JMeter 脚本", "生成 jmx", "压测脚本", "jmeter script"], "exclude": ["不要 JMeter", "不要压测脚本"], "standards": ["07-performance.md", "11-data-safety.md"], "constraints": ["真实 API 契约决定方法和路径，压测与业务写入必须在授权环境执行"] },
+    { "id": "perf-report-analyzer", "path": ".github/skills/perf/perf-report-analyzer/SKILL.md", "phrases": ["分析性能报告", "jtl 分析", "性能瓶颈", "perf 报告", "performance report"], "exclude": ["不要分析性能报告"], "standards": ["07-performance.md", "10-report.md"], "constraints": ["引用本次实际样本与基线，缺采样或缺 SLA 要明确未验证"] }
+  ]
+}

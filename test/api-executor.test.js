@@ -165,6 +165,7 @@ test("api-executor: 全链路 DAG 通过（四层断言 + 零污染 + 负例 + �
   await withMock({}, async (mock) => {
     const result = await runApiTests({ baseUrl: mock.url, contractPath: contract, token: "good" });
     assert.equal(result.error, undefined);
+    assert.deepEqual(result.checkedFiles, [contract]);
 
     const s = result.summary;
     // 正例链路
@@ -200,6 +201,11 @@ test("api-executor: 全链路 DAG 通过（四层断言 + 零污染 + 负例 + �
     assert.ok(s.decision.startsWith("通过"), s.decision);
     assert.ok(s.assertions.total >= 10, "断言总数应可观");
     assert.equal(s.cleanup.verified, true);
+    const page = join(TMP, "page-spec.json");
+    writeFileSync(page, JSON.stringify({ page: "Orders", mode: "crud", dir: "orders", apiContract: "contract.json" }));
+    const linked = await runApiTests({ baseUrl: mock.url, contractPath: page, token: "good" });
+    assert.equal(linked.error, undefined);
+    assert.deepEqual(linked.checkedFiles, [page, contract], "page and actually consumed API contract must both appear in execution scope");
   });
   rmSync(TMP, { recursive: true, force: true });
 });
@@ -344,6 +350,7 @@ test("api-executor: dict-file 注入枚举合法值", async () => {
     const dictPath = join(TMP, "dict.json");
     writeFileSync(dictPath, JSON.stringify({ orderNo: ["DICT_ORDER_001"] }));
     const result = await runApiTests({ baseUrl: mock.url, contractPath: contract, token: "good", dictFile: dictPath });
+    assert.deepEqual(result.checkedFiles, [contract, dictPath]);
     assert.equal(step(result, "create")[0].status, "pass");
     assert.equal(step(result, "readback")[0].status, "pass");
   });

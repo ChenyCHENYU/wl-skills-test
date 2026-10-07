@@ -9,6 +9,16 @@ export const TOOL_PREFIX = "wls_test";
 
 export const TOOL_DESCRIPTORS = [
   {
+    name: "wls_test_task",
+    description: "任务技能路由/约束/缺口与可观测回执：task 仅持久化规划，route/explain/status/doctor-host 只读；安装不能证明宿主加载",
+    inputSchema: { type: "object", properties: {
+      action: { type: "string", enum: ["task", "route", "explain", "status", "doctor-host"] },
+      task: { type: "string" }, root: { type: "string", description: "项目根目录；MCP server cwd 可能不是项目根" },
+      runId: { type: "string", description: "与实际执行命令复用的任务关联 ID" },
+      files: { type: "array", items: { type: "string" } }, domain: { type: "string" }, skill: { type: "string" }, host: { type: "string" },
+    } },
+  },
+  {
     name: "wls_test_contract_diff",
     description: "契约变更影响面分析：操作/字段级变更明细 + 受影响用例清单（新增/作废/需重跑），返回紧凑结构化结果",
     inputSchema: {
@@ -133,7 +143,7 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_audit",
-    description: "审计测试代码（T1-T12 确定性规则扫描，支持 Playwright/JMeter/用例文档）",
+    description: "审计测试代码（T1-T25 确定性规则扫描，支持 Playwright/JMeter/用例文档）",
     inputSchema: {
       type: "object",
       properties: {
@@ -217,6 +227,7 @@ export const TOOL_DESCRIPTORS = [
         audit: { type: "string", description: "audit 输出的 JSON 文件路径" },
         defects: { type: "string", description: "缺陷清单 JSON 文件路径" },
         cases: { type: "number", description: "总用例数（DI 密度分母）" },
+        allowLegacy: { type: "boolean", description: "旧无回执结果仅导入诊断，不能宣称任务验证通过" },
         trend: { type: "boolean", description: "追加最近 5 次汇总趋势" },
         reportsDir: { type: "string", description: "test-reports 目录（趋势数据源，默认 test-reports）" },
         output: { type: "string", description: "报告输出路径（可选）" },
@@ -264,6 +275,17 @@ export const TOOL_DESCRIPTORS = [
     },
   },
 ];
+
+// Shared correlation metadata is declared for actual execution tools.
+for (const descriptor of TOOL_DESCRIPTORS) {
+  if (["wls_test_audit", "wls_test_run_api", "wls_test_run_playwright", "wls_test_run_jmeter", "wls_test_e2e_check", "wls_test_gate", "wls_test_report_generate"].includes(descriptor.name)) {
+    Object.assign(descriptor.inputSchema.properties, {
+      runId: { type: "string", description: "复用 task 返回的 runId；不跨任务拼接证据" },
+      root: { type: "string", description: "证据所属项目根目录" },
+      reportsDir: { type: "string", description: "报告目录；各结果在 runs/<runId> 内保存" },
+    });
+  }
+}
 
 export function getToolCount() {
   return TOOL_DESCRIPTORS.length;

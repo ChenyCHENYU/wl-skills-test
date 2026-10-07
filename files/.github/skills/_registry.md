@@ -1,6 +1,12 @@
 # Skill 触发词路由表
 
-> 所有 Skill 通过 `_route-evals.test.json` 的短语边界匹配自动触发，此文件为人读索引。
+> 此文件是人读索引。真实路由由 `task / route / explain` 消费 `.wl-skills-test/routes.v1.json`；evals 只验证该路由，不会替宿主自动加载。安装或命中不能证明宿主读取。
+
+## 项目接入
+
+| 触发词 | Skill | 分组 |
+|--------|-------|------|
+| 接入测试 / 上质量门禁 / 让 AI 能跑测试 | test-onboarding | onboarding |
 
 ## 功能测试链
 

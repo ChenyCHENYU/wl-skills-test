@@ -97,12 +97,12 @@ test("v24: report --plan-input 聚合历史/本次/各维度摘要（AI 写测�
   writeFileSync(join(reportsDir, "api-result.json"), JSON.stringify({ summary: { entity: "X", total: 2, passed: 2, failed: 0, errors: 0, skipped: 0, passRate: 100, decision: "通过", dimensionCoverage: { "field-required": { executed: 1, passed: 1 } } } }));
   writeFileSync(join(reportsDir, "audit-result.json"), JSON.stringify({ pass: true, level: "green", bySeverity: { fatal: 0, error: 0, warning: 1 }, byRule: { T2: 1 }, total: 1 }));
   try {
-    const r = runCli(["report", "--plan-input"]);
-    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const r = runCli(["report", "--plan-input", "--allow-legacy"]);
+    assert.equal(r.status, 1, r.stdout + r.stderr);
     const planPath = join(reportsDir, "plan-input.json");
     assert.ok(existsSync(planPath));
     const data = JSON.parse(readFileSync(planPath, "utf-8"));
-    assert.equal(data.current.pass, true);
+    assert.equal(data.current.pass, false);
     assert.ok(data.current.score !== undefined);
     assert.deepEqual(data.apiDimensionCoverage["field-required"], { executed: 1, passed: 1 });
     assert.equal(data.auditDigest.bySeverity.warning, 1);

@@ -89,6 +89,11 @@ test("v15: README 徽章/口径与代码一致（工具数/测试数/版本）",
     if (!f.endsWith(".test.js")) continue;
     testCount += (readFileSync(join(testDir, f), "utf-8").match(/^\s*test\(/gm) || []).length;
   }
+  // The router registers one real test per released skill on the same for() line.
+  const routingTest = readFileSync(join(testDir, "task-observability.test.js"), "utf-8");
+  if (routingTest.includes("for (const skill of readRoutes().skills) test(")) {
+    testCount += JSON.parse(readFileSync(join(PKG_ROOT, "files/.wl-skills-test/routes.v1.json"), "utf-8")).skills.length;
+  }
   const badgeMatch = readme.match(/tests-(\d+)%20pass/);
   assert.ok(badgeMatch, "README 应有 tests 徽章");
   // 徽章不得高于实际 test() 定义数（防虚标）；精确总数以 node --test 运行结果为准

@@ -1,28 +1,13 @@
-# AI 测试技能主入口
+# wl-skills-test 任务入口
 
-本项目已安装 `@agile-team/wl-skills-test`（v__WL_SKILLS_TEST_VERSION__）测试工程技能包。
+本项目使用 `@agile-team/wl-skills-test`（v__WL_SKILLS_TEST_VERSION__），测试领域独立可用。
 
-## 快速触发
+每次代码或测试任务先运行 `npx @agile-team/wl-skills-test task "<任务>" --json`，仅规划，不执行业务请求。只读取返回的 `skillPaths` 和 `requiredFiles`；13 个技能的权威触发清单是 `.wl-skills-test/routes.v1.json`，覆盖 onboarding/plan/case/exec/quality/perf。
 
-| 你说 | 触发的 Skill |
-|------|-------------|
-| "生成测试方案" / "编制测试计划" | test-plan-generator |
-| "分析业务场景" / "梳理测试场景" | test-scenario-analyzer |
-| "生成测试用例" / "编写用例" | test-case-generator |
-| "评审测试用例" / "用例评审" | test-case-reviewer |
-| "筛选冒烟用例" / "冒烟套件" | smoke-test-selector |
-| "执行冒烟测试" | smoke-test-executor |
-| "生成自动化脚本" / "Playwright 脚本" | test-script-generator |
-| "质量评估" / "DI 分析" / "上线判定" | test-quality-analyzer |
-| "性能测试方案" / "JMeter 脚本" | perf-plan-generator / perf-script-generator |
-| "分析性能报告" / "jtl 分析" | perf-report-analyzer |
+开工时简短说明 `matched / baseline / ambiguous / gap / not-applicable`、选定技能与约束。歧义先明确工作流；必要技能或规范缺失时报告 gap 和补充建议，不能声称约束就绪。普通代码任务只适用测试基线，不自动执行接口或压测。
 
-## 测试规范
+复用返回的 `runId`：实际执行 `audit / run-api / run-playwright / run-jmeter / e2e-check / gate` 时传 `--run-id`；结束用 `status --run-id <ID> --json` 分别报告执行状态与验证状态。报告只聚合同一 runId，未执行的检查保持未验证。
 
-共 11 条，位于 `.github/standards/`，AI 按任务类型自动加载。
+`route`、`explain` 是只读路由；`doctor-host --host codex --json` 是静态入口诊断。文件存在、安装通过、模型自报均不能证明宿主已读取或遵循；宿主加载和行为证据未知时明确 unknown / unverified。技能命中不能替代真实 API 事实、执行授权、测试数据隔离与清理。
 
-## 流水线
-
-```
-需求 → 方案 → 场景 → 用例 → 评审 → 冒烟 → 执行 → 脚本 → 质量评估
-```
+同一用户任务涉及多个已安装且适用的包时复用同一 `runId`（`--run-id` / `WL_TASK_RUN_ID`）；本包不依赖其他包，仍可独立使用。

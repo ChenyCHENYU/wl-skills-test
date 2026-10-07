@@ -16,6 +16,7 @@ test("executors: runJmeter 工具未安装时优雅降级", async () => {
   const { runJmeter } = await import("../lib/executors.js");
   const result = await runJmeter({ jmxPath: "./nonexistent.jmx" });
   assert.ok(result.error || result.tool === "jmeter");
+  assert.equal(result.checkedFiles, undefined, "an unavailable plan must never be reported as executed");
 });
 
 test("audit: T13-T18 JMeter 全规则检测", async () => {

@@ -265,8 +265,8 @@ test("CLI: report 自动发现 + 索引 + 历史产出（test-reports/ 目录约
   writeFileSync(join(reportsDir, "playwright-result.json"), JSON.stringify({ summary: { passed: 8, failed: 0, skipped: 0, total: 8 } }));
   try {
     // 不传任何来源 → 自动发现（cwd=TMP）
-    const r = runCli(["report", "--trend"], { cwd: TMP });
-    assert.equal(r.status, 0, `stdout: ${r.stdout}`);
+    const r = runCli(["report", "--trend", "--allow-legacy"], { cwd: TMP });
+    assert.equal(r.status, 1, `stdout: ${r.stdout}`);
     assert.ok(r.stdout.includes("自动发现维度结果"), r.stdout);
     assert.ok(existsSync(join(reportsDir, "测试报告.md")));
     assert.ok(existsSync(join(reportsDir, "index.md")));
@@ -278,7 +278,7 @@ test("CLI: report 自动发现 + 索引 + 历史产出（test-reports/ 目录约
     const idx = readFileSync(join(reportsDir, "index.md"), "utf-8");
     assert.ok(idx.includes("api-报告.md") || idx.includes("api-result.json") || idx.includes("测试报告.md"));
     // 二次运行 → 趋势出现两行历史
-    runCli(["report", "--trend"], { cwd: TMP });
+    runCli(["report", "--trend", "--allow-legacy"], { cwd: TMP });
     const md2 = readFileSync(join(reportsDir, "测试报告.md"), "utf-8");
     assert.ok(md2.includes("运行趋势"), "第二次运行应含趋势");
   } finally {
@@ -351,12 +351,12 @@ test("CLI: report --webhook 推送结论到指定地址", async () => {
   try {
     // 异步 spawn（spawnSync 会阻塞父进程事件循环，mock server 无法响应）
     const r = await new Promise((resolve) => {
-      const p = spawn(process.execPath, [BIN, "report", "--api", api, "--output", output, "--webhook", hook]);
+      const p = spawn(process.execPath, [BIN, "report", "--api", api, "--output", output, "--allow-legacy", "--webhook", hook]);
       let out = "";
       p.stdout.on("data", (d) => (out += d));
       p.on("close", (code) => resolve({ status: code, stdout: out }));
     });
-    assert.equal(r.status, 0, `stdout: ${r.stdout}`);
+    assert.equal(r.status, 1, `stdout: ${r.stdout}`);
     assert.ok(r.stdout.includes("webhook 已推送"), r.stdout);
     assert.ok(received, "mock webhook 应收到 POST");
     assert.ok(JSON.stringify(received).includes("上线条件"));

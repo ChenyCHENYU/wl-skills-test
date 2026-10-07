@@ -65,6 +65,7 @@ rl.on("line", (line) => {
           protocolVersion: PROTOCOL_VERSION,
           capabilities: { tools: {}, resources: {} },
           serverInfo: SERVER_INFO,
+          instructions: "代码/测试任务先调用 wls_test_task(action:task) 记录所选技能、基线和缺口；按需读取 canonical 文件。执行工具复用 runId，结束调用 action:status，分别报告执行与验证状态。文件存在和模型自报不能证明宿主加载。",
         },
       });
       break;

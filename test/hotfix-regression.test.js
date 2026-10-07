@@ -116,7 +116,7 @@ test("hotfix: report 损坏的 api-result.json 阻断上线判定", () => {
   }
 });
 
-test("hotfix: report 自动发现含 audit 维度且 mtime 最新优先", () => {
+test("hotfix: report 显式旧来源保留 audit 维度但验证未决", () => {
   setupTmp();
   const reportsDir = join(TMP, "test-reports");
   mkdirSync(reportsDir, { recursive: true });
@@ -126,7 +126,9 @@ test("hotfix: report 自动发现含 audit 维度且 mtime 最新优先", () => 
     const result = generateReport({ api: join(reportsDir, "api-result.json"), audit: join(reportsDir, "audit-result.json") });
     assert.ok(result.report.includes("测试代码审计"), "应含审计章节");
     assert.ok(result.report.includes("上线判定"));
-    assert.equal(result.pass, true);
+    assert.equal(result.pass, false);
+    assert.equal(result.domainPass, true);
+    assert.equal(result.validationStatus, "unverified");
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }

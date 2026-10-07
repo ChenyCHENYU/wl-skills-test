@@ -19,7 +19,7 @@ const PW_JSON = { summary: { passed: 20, failed: 0, skipped: 1, flaky: 0, total:
 
 const JM_JSON = { summary: { samples: 1000, passed: 995, failed: 5, errorRate: 0.5, p50: 120, p95: 300, p99: 450, sla: "达标", decision: "通过" } };
 
-test("report: 全来源达标 → 具备上线条件", () => {
+test("report: 旧来源达标但没有任务回执 → 验证未决", () => {
   mkdirSync(TMP, { recursive: true });
   try {
     const api = join(TMP, "api.json");
@@ -33,8 +33,10 @@ test("report: 全来源达标 → 具备上线条件", () => {
 
     const result = generateReport({ api, playwright: pw, jmeter: jm, defects, cases: 100 });
     assert.equal(result.error, undefined);
-    assert.equal(result.pass, true);
-    assert.equal(result.decision, "pass");
+    assert.equal(result.pass, false);
+    assert.equal(result.domainPass, true);
+    assert.equal(result.validationStatus, "unverified");
+    assert.equal(result.decision, "blocked");
     assert.ok(result.report.includes("具备上线条件"));
     assert.ok(result.report.includes("API 接口冒烟"));
     assert.ok(result.report.includes("Playwright"));
@@ -96,7 +98,7 @@ test("report: 自动发现 test-reports/ 维度结果", () => {
     writeFileSync(join(TMP, "api-result.json"), JSON.stringify(API_JSON));
     writeFileSync(join(TMP, "playwright-result.json"), JSON.stringify({ summary: { passed: 10, failed: 0, skipped: 0, total: 10 } }));
     writeFileSync(join(TMP, "defects.json"), JSON.stringify([{ severity: "minor", status: "closed", module: "a" }]));
-    const found = discoverDimensionResults(TMP);
+    const found = discoverDimensionResults(TMP, { allowLegacy: true });
     assert.ok(found.api.endsWith("api-result.json"));
     assert.ok(found.playwright.endsWith("playwright-result.json"));
     assert.ok(found.defects.endsWith("defects.json"));
@@ -104,7 +106,9 @@ test("report: 自动发现 test-reports/ 维度结果", () => {
 
     // 端到端：发现的结果直接喂 generateReport
     const result = generateReport({ api: found.api, playwright: found.playwright, defects: found.defects, cases: 100 });
-    assert.equal(result.pass, true);
+    assert.equal(result.pass, false);
+    assert.equal(result.domainPass, true);
+    assert.equal(result.validationStatus, "unverified");
     assert.equal(result.snapshot.api, 100);
     assert.equal(result.snapshot.ui, 100);
   } finally {

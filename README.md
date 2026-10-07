@@ -2,18 +2,18 @@
 
 <p align="center">
   <strong>测试工程 AI 技能包</strong><br>
-  11 条测试规范 · 13 个 AI Skill · 19 个 MCP 工具 · 契约驱动生成 · 深度 E2E 工程 · 报告聚合 · 性能基线
+  11 条测试规范 · 13 个 AI Skill · 20 个 MCP 工具 · 契约驱动生成 · 深度 E2E 工程 · 报告聚合 · 性能基线
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.26.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.27.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-13-purple.svg" />
-  <img src="https://img.shields.io/badge/MCP-19-teal.svg" />
+  <img src="https://img.shields.io/badge/MCP-20-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
   <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-291%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/tests-316%20pass-brightgreen.svg" />
 </p>
 
 ---
@@ -42,10 +42,10 @@ design ──→ kit ──→ ui ──→ bd ──→ test
 
 ```bash
 # 全量安装到当前项目（11 规范 + 13 Skill + 模板 + 编辑器原生规则）
-npx @agile-team/wl-skills-test
+npx @agile-team/wl-skills-test init
 
 # 预览将写入哪些文件
-npx @agile-team/wl-skills-test --dry-run
+npx @agile-team/wl-skills-test init --dry-run
 
 # 增量更新
 npx @agile-team/wl-skills-test update
@@ -53,7 +53,7 @@ npx @agile-team/wl-skills-test update
 # 环境体检
 npx @agile-team/wl-skills-test doctor
 
-# 审计测试代码（T1-T12 确定性规则）
+# 审计测试代码（T1-T25 确定性规则）
 npx @agile-team/wl-skills-test audit --target ./tests/
 
 # 自动修复测试代码反模式
@@ -79,10 +79,28 @@ npx @agile-team/wl-skills-test run-gen --contract ./src/views --type e2e --route
 npx @agile-team/wl-skills-test e2e-check --target ./e2e
 
 # 聚合各执行结果生成测试报告（对齐规范 10，含上线判定）
-npx @agile-team/wl-skills-test report --api smoke.json --playwright playwright-result.json --defects defects.json --cases 150
+npx @agile-team/wl-skills-test report --run-id <本次执行返回的ID> --cases 150
 ```
 
-安装后，AI 编辑器自动识别 `.github/skills/` 下的 13 个 Skill 和 `.github/standards/` 下的 11 条规范。
+安装后提供 13 个测试 Skill、11 条规范及各宿主入口。Codex 原生入口在 `.agents/skills/wl-skills-test/SKILL.md`，按需读取 `.github/skills/` 的规范源；其他宿主是否实际加载需在宿主中确认。
+
+每项任务的技能反馈和真实执行回执：
+
+```bash
+npx @agile-team/wl-skills-test task "生成测试用例" --files src/order.ts --json
+npx @agile-team/wl-skills-test route "修复订单提交" --files src/order.ts --json  # 只读
+npx @agile-team/wl-skills-test explain "测试一下" --json
+npx @agile-team/wl-skills-test audit --target tests --run-id <task返回的ID>
+npx @agile-team/wl-skills-test status --run-id <ID> --json
+npx @agile-team/wl-skills-test doctor-host --host codex --json
+npx @agile-team/wl-skills-test report --run-id <ID>
+```
+
+`matched` 选定专项技能；`baseline` 适用代码任务测试基线；`ambiguous` 需要明确工作流；`gap` 缺少能力或必要文件；`not-applicable` 明确不适用；`needs-context` 缺少判断上下文。同一用户任务涉及多个已安装且适用的包时复用同一 `runId`（`--run-id` / `WL_TASK_RUN_ID`），本包仍独立可用。`task` 仅记录规划，`route/explain` 只读。开工反馈所选技能和约束，结束分别反馈执行与验证状态；缺口和建议记录在本包任务事件中，由 `status` 汇总。入口不授权发送接口/压测请求。
+
+不可变回执位于 `.wl-skills-test/runs/<runId>/`，真实 `audit/run-api/run-playwright/run-jmeter/e2e-check/gate` 的结果位于 `test-reports/runs/<runId>/`。完成执行不等于通过验证：失败断言、跳过、零样本和输入变化都有独立状态；`status` 重新比对来源哈希识别过期证据。`report` 只选择同一任务，核对回执、结果摘要哈希与来源新鲜度，不按文件时间拼接。`--allow-legacy` 可导入旧结果诊断，验证仍为未决。宿主是否发现/加载入口、MCP 是否连接、模型是否遵循规则保持 `unverified`，静态诊断不冒充真实宿主观测。MCP 用 `wls_test_task` 的 `task/route/explain/status/doctor-host` action 提供相同入口。
+
+任务范围按执行器实际检查的文件核对：审计记录适用规则处理的文件，API 记录读取的页面规格、接口契约、项目 profile 和字典，JMeter 记录执行的 JMX。目录来源快照只用于识别变化，不表示目录内每个文件都通过检查。当前 Playwright 输出只有执行统计，无法确认业务源码覆盖范围；显式任务文件没有实际覆盖证据时保持 `partial`。关联契约或规则变化后，旧回执不能继续作为通过依据。
 
 安装与更新先检查完整计划，包括文件及父目录的类型冲突。项目原有文件不因内容相同而自动归属本包；遇到未登记冲突时整体停止，`--force` 只可更新已登记的本包单元。`.wl-skills-test/manifest.json` 保存上次安装基线，事务失败会回滚；覆盖前的副本保存在 `.wl-skills-test/backups/`。
 
@@ -319,10 +337,11 @@ e2e/
 
 ---
 
-## 🔧 19 个 MCP 工具
+## 🔧 20 个 MCP 工具
 
 | 工具 | 用途 |
 |------|------|
+| `wls_test_task` | task/route/explain/status/doctor-host，规划与执行证据分离 |
 | `wls_test_contract_diff` | 契约变更影响面分析及受影响用例清单 |
 | `wls_test_gen_contract` | 从 OpenAPI/Swagger 生成测试契约 |
 | `wls_test_standards` | 查询测试规范（按编号或名称） |
@@ -408,7 +427,7 @@ wl-skills-test/
 │   ├── executors.js               # Playwright/JMeter 执行器（异步 spawn 防注入 + jtl 流式解析）
 │   ├── test-audit.js              # T1-T25 审计引擎（规则表驱动，T26+ 加一个对象）
 │   ├── perf-compare.js            # 性能基线对比（劣化判定，基线缺失/为零不漏判）
-│   ├── report-generator.js        # 测试报告聚合（维度注册表 + fail-closed + mtime 自动发现）
+│   ├── report-generator.js        # 测试报告聚合（维度注册表 + fail-closed + 同 runId 来源发现）
 │   ├── report-dimensions.js       # 各维度报告渲染 + history.jsonl（容错读取）
 │   ├── gate.js                    # 质量门聚合（含模块收敛，与 quality-gate 同口径）
 │   ├── write-guard.js             # 安全写链（哈希确认 + 字节级备份回滚 + 重复目标拒绝）
@@ -428,7 +447,7 @@ wl-skills-test/
 │   └── 编辑器原生规则目录与共享指令
 ├── .github/workflows/ci.yml       # 包自身 CI（双 OS × Node 20/22 + npm pack 校验 + 自动发布）
 ├── docs/                          # 架构设计 + 分析文档
-└── test/                          # 291 个测试（单元 + CLI 集成 + 自一致性 + MCP stdio + 引擎/生成器回归）
+└── test/                          # 316 个测试（单元 + CLI 集成 + 自一致性 + MCP stdio + 引擎/生成器回归）
 ```
 
 ---
@@ -439,7 +458,7 @@ wl-skills-test/
 |------|:----:|------|
 | 测试规范 | 11 | 对齐在线 QC 流程规范（另以 MCP resources 只读暴露） |
 | AI Skill | 13 | 功能链 9 + 性能链 3 + 接入引导 1 |
-| MCP 工具 | 19 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
+| MCP 工具 | 20 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
 | 审计规则 | 25 | T1-T25 确定性扫描器（T3/T4 块级精确解析 + T21-T25 E2E 工程约束） |
 | 自动修复 | 6 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码/afterEach/测试名） |
 | 执行器 | 3 | run-api（HTTP）/ run-playwright / run-jmeter + jtl 解析 |
@@ -449,7 +468,7 @@ wl-skills-test/
 | 性能基线 | 1 命令 | perf-compare 劣化判定（CI 非零退出） |
 | 报告聚合 | 1 命令 | report 对齐规范 10 模板 + 上线判定 |
 | 输出模板 | 5 | 测试方案/自测清单/Playwright/质量报告/JMeter |
-| 单元+集成测试 | 268 | 全部通过（含 mock 后端集成/沙箱模拟跑/CLI/MCP stdio/e2e-check/报告体系/引擎与生成器回归） |
+| 单元+集成测试 | 316 | 全部通过（含 mock 后端集成/沙箱模拟跑/CLI/MCP stdio/e2e-check/报告体系/引擎与生成器回归） |
 | 编辑器适配 | 9 | Copilot/Cursor/Windsurf/Claude/Kiro/Trae/Cline/AGENTS/Qoder |
 
 ---
@@ -498,7 +517,7 @@ wl-skills-test/
 | 规范审计引擎 | R1-R16 (AST) | B1-B29 | R001-R039 (39条) | **T1-T20** | ✅ 已补齐 |
 | 自动修复 | safe-fix (F1-F5) | code-fix-be (B3/B5) | fix (12条) | **F1-F6** | ✅ 已补齐 |
 | 质量门对象 | 源码本身 | 源码本身 | 源码本身 | **外部 DI + 内部审计** | ✅ 已增强 |
-| MCP 工具数 | 23 | 16 | 10 | **19** | 🟡 可继续扩展 |
+| MCP 工具数 | 23 | 16 | 10 | **20** | 🟡 可继续扩展 |
 | 确定性 vs AI 驱动 | 确定性 | 确定性 | 确定性 | **确定性+AI** | ✅ 已补齐 |
 | 执行能力 | ❌ | ❌ | ❌ | **API/UI/性能执行 ✅** | ✅ 领先 |
 
@@ -565,6 +584,7 @@ wl-skills-test/
 | v0.13.0 | 引擎层：jtl 流式解析（直方图分位数）+ run-api 幂等读重试 + 负例/权限并行 + 执行器异步化防注入 + 审计规则表驱动（T13/T14/T18 精准化） |
 | v0.14.0 | 生成器精准化：FG 内容哈希稳定 ID + 基线↔细粒度去重 + 逐字段负例（上限 8）+ dimensionCoverage 追溯 + UI 适配层补漏（校验/自定义注入/泄漏修复）+ 路由归一 |
 | **v0.15.0** | **收口：write-guard 字节级回滚并接线 CLI/MCP 写路径（fix 带 root 约束）+ plan-hash 归一化 + 文档口径与代码一致（工具数/结构/测试数单一事实源）** |
+| **v0.27.0** | **每任务路由与约束反馈、原生gateway、缺口建议、输入/规则/配置哈希回执、执行与验证分离；报告同runId及新鲜度检查，空validate拒绝假绿** |
 | **v0.26.0** | **独立测试能力保留；安装归属与事务保护、编辑器目录隔离、共享贡献保真、项目 Profile 真实消费；页面无 API 契约时保留 UI 场景并明确接口事实未决** |
 
 ---

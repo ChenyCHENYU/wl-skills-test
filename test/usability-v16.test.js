@@ -274,7 +274,7 @@ test("v16: MCP audit 默认紧凑（TopN + 修复入口），report 默认紧凑
     // report 紧凑
     const api = join(TMP, "api-result.json");
     writeFileSync(api, JSON.stringify({ summary: { entity: "X", total: 2, passed: 1, failed: 1, errors: 0, skipped: 0, passRate: 50, decision: "不通过" } }));
-    const rep = HANDLERS.wls_test_report_generate({ api });
+    const rep = HANDLERS.wls_test_report_generate({ api, allowLegacy: true });
     assert.equal(rep.pass, false);
     assert.ok(Array.isArray(rep.failingChecks), "应回未达标项列表");
     assert.equal(rep.report, undefined, "默认不内联报告全文");
