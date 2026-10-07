@@ -1,0 +1,16 @@
+[
+  { "task": "生成测试方案", "skill": "test-plan-generator" },
+  { "task": "分析业务场景", "skill": "test-scenario-analyzer" },
+  { "task": "生成测试用例", "skill": "test-case-generator" },
+  { "task": "评审测试用例", "skill": "test-case-reviewer" },
+  { "task": "筛选冒烟用例", "skill": "smoke-test-selector" },
+  { "task": "执行冒烟测试", "skill": "smoke-test-executor" },
+  { "task": "生成自动化脚本", "skill": "test-script-generator" },
+  { "task": "质量评估上线判定", "skill": "test-quality-analyzer" },
+  { "task": "生成性能测试方案", "skill": "perf-plan-generator" },
+  { "task": "生成 JMeter 脚本", "skill": "perf-script-generator" },
+  { "task": "分析性能报告", "skill": "perf-report-analyzer" },
+  { "task": "接入测试", "skill": "test-onboarding" },
+  { "task": "写诗", "skill": null, "status": "not-applicable" },
+  { "task": "设计数据库", "skill": null, "status": "needs-context" }
+]

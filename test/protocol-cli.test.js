@@ -43,6 +43,8 @@ test('task 持久化返回 runId 且 status 可回查', () => {
   assert.ok(planned.result.runId);
   const status = protocol.request({ operation: 'status', projectRoot: root, runId: planned.result.runId }, runOperation);
   assert.equal(status.ok, true);
+  assert.equal(status.result.runId, planned.result.runId);
+  assert.equal(status.result.executionStatus, 'not-executed');
 });
 
 test('doctor-host 按指定 host 诊断', () => {
@@ -56,6 +58,43 @@ test('协议错误码：missing-input / unknown-operation / invalid-input / unsu
   assert.equal(protocol.request({ operation: 'run' }, runOperation).error.code, 'unknown-operation');
   assert.equal(protocol.request('route', runOperation).error.code, 'invalid-input');
   assert.equal(protocol.request({ protocolVersion: 7, operation: 'route', task: 'x' }, runOperation).error.code, 'unsupported-protocol');
+});
+
+test('边界输入校验：非法类型在触达执行器前判 invalid-input（独立复验缺陷回归）', () => {
+  const invalidPayloads = [
+    { operation: 'task', task: true },
+    { operation: 'task', task: { text: 'bad' } },
+    { operation: 'task', task: '检查目标', targets: [null, 42, {}] },
+    { operation: 'route', task: '检查目标', projectRoot: 42 },
+    { operation: 'task', task: '检查目标', runId: {} },
+  ];
+  for (const payload of invalidPayloads) {
+    const envelope = protocol.request(payload, () => { throw new Error('不应触达执行器'); });
+    assert.equal(envelope.ok, false);
+    assert.equal(envelope.error.code, 'invalid-input');
+    assert.ok(envelope.error.field);
+  }
+});
+
+test('domain 上下文透传保持与原入口判定一致（输入对齐回归）', () => {
+  const root = tempRoot();
+  const envelope = protocol.request({ operation: 'route', projectRoot: root, task: '检查', domain: 'documentation' }, runOperation);
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.result.status, 'not-applicable');
+});
+
+test('CLI 缺 --input-file 时 stdout 输出 missing-input JSON 信封', () => {
+  const run = spawnSync(process.execPath, [BIN, 'protocol', 'request'], { encoding: 'utf8' });
+  assert.equal(run.status, 2);
+  const envelope = JSON.parse(run.stdout);
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.code, 'missing-input');
+  assert.equal(envelope.error.field, 'input-file');
+});
+
+test('旧 CLI 入口在未启用 require(esm) 的 Node 上保持可用（模块加载回归）', () => {
+  const run = spawnSync(process.execPath, ['--no-experimental-require-module', BIN, '--help'], { encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
 });
 
 test('CLI protocol describe / request 全链路', () => {

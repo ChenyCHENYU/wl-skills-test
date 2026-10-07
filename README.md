@@ -38,6 +38,23 @@ design ──→ kit ──→ ui ──→ bd ──→ test
 
 ---
 
+## 公开集成协议 v1
+
+供 harness、客户端或其他编排层以统一 JSON 入口调用本包判定与状态能力（业务执行仍走本包 CLI/MCP，不因协议新增兄弟包依赖）。
+
+```bash
+wl-skills-test protocol describe --json                      # 能力目录、五操作映射、请求/响应 Schema、错误码
+wl-skills-test protocol request --input-file request.json --json
+```
+
+- 操作：`route` / `explain`（只读判定）、`task`（判定并持久化计划，尚未执行）、`status`（回查本包执行回执）、`doctor-host`（宿主入口静态诊断）。
+- 请求字段：`protocolVersion`(1)、`operation`、`requestId`、`runId`、`projectRoot`、`task`、`targets`、`skill`、`host`+ `domain`（领域上下文，参与判定）。
+- 统一信封：`{ ok, result | error, diagnostics }`；机器结果与诊断分离；非法输入在触达执行器前判 `invalid-input`，不写入任何记录。
+- 错误码：`unsupported-protocol` / `unknown-operation` / `missing-input` / `invalid-input` / `internal-error`；请求失败（exit 2）时 stdout 仍为可解析 JSON 信封。
+- **`ok=true` 只表示协议调用成功，不代表业务验证通过**；业务状态以 `result` 内 `validationStatus` / `executionStatus` 为准（仅计划时为 `unverified` / `not-executed`）。
+- 副作用：仅 `task` 写入本包自己的 runs 目录（见 describe 中各操作 `sideEffects`）；其余操作只读。
+- 协议实现为本包内置的同源快照 `integration-protocol.cjs`，五包一致；跨包一致性由 conformance `integration-protocol.check.cjs` 验收。
+
 ## 📦 安装
 
 ```bash
