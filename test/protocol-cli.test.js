@@ -109,3 +109,26 @@ test('CLI protocol describe / request 全链路', () => {
   assert.equal(request.status, 0);
   assert.equal(JSON.parse(request.stdout).ok, true);
 });
+
+
+test('context null 判 invalid-input 且零写入（CLI 回归）', () => {
+  const root = tempRoot();
+  const file = path.join(root, 'req.json');
+  const { writeFileSync, readdirSync } = require('node:fs');
+  writeFileSync(file, JSON.stringify({ operation: 'task', projectRoot: root, task: '生成测试方案', runId: 'ctx-null', context: null }));
+  const run = spawnSync(process.execPath, [BIN, 'protocol', 'request', '--input-file', file], { encoding: 'utf8' });
+  assert.equal(run.status, 2);
+  const envelope = JSON.parse(run.stdout);
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.code, 'invalid-input');
+  assert.equal(envelope.error.field, 'context');
+  assert.equal(readdirSync(root).filter((name) => name.startsWith('.')).length, 0, '不得写入任何任务记录');
+});
+
+test('targets 空数组与 Schema 一致（运行时接受空范围）', () => {
+  const root = tempRoot();
+  const envelope = protocol.request({ operation: 'route', projectRoot: root, task: '生成测试方案', targets: [] }, runOperation);
+  assert.equal(envelope.ok, true);
+  const described = protocol.describe();
+  assert.equal(described.schemas.request.properties.targets.minItems, undefined, 'Schema 不得要求非空 targets');
+});
