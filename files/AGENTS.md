@@ -4,6 +4,8 @@
 
 每次代码或测试任务先运行 `npx @agile-team/wl-skills-test task "<任务>" --json`，仅规划，不执行业务请求。只读取返回的 `skillPaths` 和 `requiredFiles`；13 个技能的权威触发清单是 `.wl-skills-test/routes.v1.json`，覆盖 onboarding/plan/case/exec/quality/perf。
 
+编辑前必须展示实际 `notice`：包名/版本、判定、Skill 或基础约束、规则编号与名称、目标、runId 和尚未执行的检查；命令失败或版本不一致须明示，不能静默跳过。
+
 开工时简短说明 `matched / baseline / ambiguous / gap / not-applicable`、选定技能与约束。歧义先明确工作流；必要技能或规范缺失时报告 gap 和补充建议，不能声称约束就绪。普通代码任务只适用测试基线，不自动执行接口或压测。
 
 复用返回的 `runId`：实际执行 `audit / run-api / run-playwright / run-jmeter / e2e-check / gate` 时传 `--run-id`；结束用 `status --run-id <ID> --json` 分别报告执行状态与验证状态。报告只聚合同一 runId，未执行的检查保持未验证。

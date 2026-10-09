@@ -6,17 +6,25 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.28.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.29.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-13-purple.svg" />
   <img src="https://img.shields.io/badge/MCP-20-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
   <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
-  <img src="https://img.shields.io/badge/tests-316%20pass-brightgreen.svg" />
+  <img src="https://img.shields.io/badge/tests-340%20pass-brightgreen.svg" />
 </p>
 
 ---
+
+## 如何确认本包正在起作用
+
+每次适用任务先运行项目本地 `wl-skills-test task "修改目标文件"  --json`。编辑前展示真实 `notice`：包名与版本、判定、选中 Skill 或基础约束、具体规则、目标、runId 和尚未执行的检查。普通修改也需要基础约束提醒；相关但未覆盖的意图显示 gap 与建议；没有目标依据显示 needs-context，职责外显示 not-applicable，不强行匹配。
+
+执行实际检查时复用 `--run-id`，结束读取 `wl-skills-test status --run-id <id> --json`，分别报告执行和验证、实际检查文件、过期证据与未执行项。`notice.displayEvidence=unverified` 表示工具回执不能证明聊天界面展示；安装、路由或模型自报不能证明宿主加载/模型读取。
+
+`wl-skills-test doctor-host --json` 对比已分发规范、本地执行器和正在运行的版本，漂移会显式报告。规范更新不会替代依赖升级：同步本包依赖、锁文件和受管入口；未使用的兄弟包无需安装。重开/刷新宿主加载后仍需观察真实任务调用，不能宣称所有 AI 自动触发。
 
 ## 🎯 这是什么
 
@@ -601,7 +609,7 @@ wl-skills-test/
 | v0.13.0 | 引擎层：jtl 流式解析（直方图分位数）+ run-api 幂等读重试 + 负例/权限并行 + 执行器异步化防注入 + 审计规则表驱动（T13/T14/T18 精准化） |
 | v0.14.0 | 生成器精准化：FG 内容哈希稳定 ID + 基线↔细粒度去重 + 逐字段负例（上限 8）+ dimensionCoverage 追溯 + UI 适配层补漏（校验/自定义注入/泄漏修复）+ 路由归一 |
 | **v0.15.0** | **收口：write-guard 字节级回滚并接线 CLI/MCP 写路径（fix 带 root 约束）+ plan-hash 归一化 + 文档口径与代码一致（工具数/结构/测试数单一事实源）** |
-| **v0.28.0** | **公开集成协议 describe/request 统一信封；ESM 加载回归修复（静态导入、MCP 目录 Node 20 可用）与 domain 透传、证据断言补齐** |
+| **v0.29.0** | **公开集成协议 describe/request 统一信封；ESM 加载回归修复（静态导入、MCP 目录 Node 20 可用）与 domain 透传、证据断言补齐** |
 | **v0.27.0** | **每任务路由与约束反馈、原生gateway、缺口建议、输入/规则/配置哈希回执、执行与验证分离；报告同runId及新鲜度检查，空validate拒绝假绿** |
 | **v0.26.0** | **独立测试能力保留；安装归属与事务保护、编辑器目录隔离、共享贡献保真、项目 Profile 真实消费；页面无 API 契约时保留 UI 场景并明确接口事实未决** |
 
