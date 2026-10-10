@@ -1,11 +1,13 @@
 ---
 name: wl-skills-test
-description: "Route testing work to wl-skills-test: test plans, cases, test review, onboarding, smoke/UI/API/performance testing and quality gates. For ordinary code changes, explain relevant testing constraints and coverage gaps without automatically executing tests or requests."
+description: "仅限目标自身已接入本包的项目；不继承父目录安装，排除移动端和未接入项目。 Route testing work to wl-skills-test: test plans, cases, test review, onboarding, smoke/UI/API/performance testing and quality gates. For ordinary code changes, explain relevant testing constraints and coverage gaps without automatically executing tests or requests."
 ---
 
 # wl-skills-test task gateway
 
 Use the installed project's testing assets; no other wl-skills package is required.
+
+先确认目标项目自身的接入证据（本包安装清单、直接依赖或 `.wl-skills-scope.json` 显式启用），再判定任务。只在目标已接入且平台适用时读取规则；父目录安装、兄弟包、Vue 文件或触发词不能证明接入。未接入的开源项目不套用规则、不建议自动安装；UniApp/小程序/App/PDA/移动 H5 不适用。跨项目目标分别判定，沿最近项目边界停止，不能越过未接入子项目找父清单。工具返回 `scope` 作为静态范围证据，宿主加载仍需实际事件。
 
 多项目工作区先沿目标路径向上找到本包安装清单与项目 AGENTS，切到该项目根再调用工具；不要以聚合工作区根代替 projectRoot，也不要在聚合根安装。不同项目分别保存项目身份，同一用户任务复用 runId。
 

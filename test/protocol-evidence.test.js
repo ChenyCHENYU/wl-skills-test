@@ -3,7 +3,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import fs, { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -12,7 +12,9 @@ const require = createRequire(import.meta.url);
 const { protocol, runOperation } = require('../lib/cli/commands/protocol.js');
 
 function tempRoot() {
-  return mkdtempSync(path.join(tmpdir(), 'wl-test-evidence-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'wl-test-evidence-'));
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ devDependencies: { "@agile-team/wl-skills-test": "*" } }));
+  return root;
 }
 
 test('status 严格回查同一 runId：字段精确、不兜底', () => {

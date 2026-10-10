@@ -3,7 +3,7 @@
  */
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import fs, { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -22,6 +22,7 @@ function tempRoot() {
 }
 
 function routeAt(projectRoot, task) {
+  if (!fs.existsSync(path.join(projectRoot, "package.json"))) fs.writeFileSync(path.join(projectRoot, "package.json"), JSON.stringify({ devDependencies: { "@agile-team/wl-skills-test": "*" } }));
   return protocol.request({ operation: 'route', projectRoot, task }, runOperation);
 }
 
@@ -35,7 +36,7 @@ for (const item of cases) {
   const expectedBare = item.skill ? 'gap' : item.status;
   const expectedInstalled = item.installedStatus || (item.skill ? 'matched' : item.status);
 
-  test(`未安装：「${item.task}」→ ${expectedBare}${item.skill ? ` + ${item.skill}` : ''}`, () => {
+  test(`已声明接入但未初始化：「${item.task}」→ ${expectedBare}${item.skill ? ` + ${item.skill}` : ''}`, () => {
     const envelope = routeAt(tempRoot(), item.task);
     assert.equal(envelope.ok, true);
     const decision = envelope.result.decision || envelope.result;

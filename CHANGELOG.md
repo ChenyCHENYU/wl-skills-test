@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.30.0] - 2026-10-11
+
+- 任务路由前校验目标项目自身接入与平台；未接入/移动端零规则零任务写入，不继承父安装。
+- 最近项目边界与跨项目拆分、独立包禁用、严格范围Schema、notice/doctor/status范围与过期证据。
+- 原生及编辑器入口收窄适用描述；补充单包、移动端、开源未接入、工作区、异常配置和Maven模块回归。
+
 本文件遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 SemVer。
 
 ---

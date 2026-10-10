@@ -1,12 +1,14 @@
 # @agile-team/wl-skills-test
 
+> 项目范围：只对目标自身已接入且平台适用的项目判定规则；父工作区安装不启用子项目。移动端与未接入开源项目不套用。详见 [精准触发与范围配置](docs/project-scope.md)。
+
 <p align="center">
   <strong>测试工程 AI 技能包</strong><br>
   11 条测试规范 · 13 个 AI Skill · 20 个 MCP 工具 · 契约驱动生成 · 深度 E2E 工程 · 报告聚合 · 性能基线
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.29.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.30.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-13-purple.svg" />
@@ -609,6 +611,7 @@ wl-skills-test/
 | v0.13.0 | 引擎层：jtl 流式解析（直方图分位数）+ run-api 幂等读重试 + 负例/权限并行 + 执行器异步化防注入 + 审计规则表驱动（T13/T14/T18 精准化） |
 | v0.14.0 | 生成器精准化：FG 内容哈希稳定 ID + 基线↔细粒度去重 + 逐字段负例（上限 8）+ dimensionCoverage 追溯 + UI 适配层补漏（校验/自定义注入/泄漏修复）+ 路由归一 |
 | **v0.15.0** | **收口：write-guard 字节级回滚并接线 CLI/MCP 写路径（fix 带 root 约束）+ plan-hash 归一化 + 文档口径与代码一致（工具数/结构/测试数单一事实源）** |
+| **v0.30.0** | **项目范围先于技能意图：未接入/移动端零写入，项目独立判定与scope回执** |
 | **v0.29.0** | **公开集成协议 describe/request 统一信封；ESM 加载回归修复（静态导入、MCP 目录 Node 20 可用）与 domain 透传、证据断言补齐** |
 | **v0.27.0** | **每任务路由与约束反馈、原生gateway、缺口建议、输入/规则/配置哈希回执、执行与验证分离；报告同runId及新鲜度检查，空validate拒绝假绿** |
 | **v0.26.0** | **独立测试能力保留；安装归属与事务保护、编辑器目录隔离、共享贡献保真、项目 Profile 真实消费；页面无 API 契约时保留 UI 场景并明确接口事实未决** |
