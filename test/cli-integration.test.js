@@ -1,16 +1,18 @@
-﻿/**
+/**
  * CLI 集成测试 — 通过 bin 入口真实执行子命令，拦截"lib 层全绿但 CLI 崩溃"的回归
  */
-import { test } from "node:test";
+import { test, after } from "node:test";
+import { tmpdir } from "node:os";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { writeFileSync, readFileSync, existsSync, rmSync, mkdirSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync, rmSync, realpathSync, mkdtempSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BIN = join(__dirname, "..", "bin", "wl-skills-test.js");
-const TMP = join(process.cwd(), ".tmp-cli-test");
+const TMP = realpathSync(mkdtempSync(join(tmpdir(), "wl-test-cli-")));
+after(() => rmSync(TMP, { recursive: true, force: true }));
 
 // Windows 下 spawn 句柄/杀软扫描可能短暂占用目录，rmSync 需重试容错
 function rmForce(p) {
@@ -25,9 +27,10 @@ function rmForce(p) {
 }
 
 function runCli(args, opts = {}) {
+  mkdirSync(opts.cwd || TMP, {recursive:true});
   return spawnSync(process.execPath, [BIN, ...args], {
     encoding: "utf-8",
-    cwd: opts.cwd || process.cwd(),
+    cwd: opts.cwd || TMP,
     timeout: 30000,
   });
 }
@@ -250,7 +253,7 @@ test("CLI: gate 聚合卡门（通过场景零退出）", () => {
     assert.ok(r.stdout.includes("质量门通过"));
   } finally {
     rmForce(TMP);
-    rmForce(join(process.cwd(), "test-reports"));
+    rmForce(join(TMP, "test-reports"));
   }
 });
 
@@ -351,7 +354,7 @@ test("CLI: report --webhook 推送结论到指定地址", async () => {
   try {
     // 异步 spawn（spawnSync 会阻塞父进程事件循环，mock server 无法响应）
     const r = await new Promise((resolve) => {
-      const p = spawn(process.execPath, [BIN, "report", "--api", api, "--output", output, "--allow-legacy", "--webhook", hook]);
+      const p = spawn(process.execPath, [BIN, "report", "--api", api, "--output", output, "--allow-legacy", "--webhook", hook], {cwd: TMP});
       let out = "";
       p.stdout.on("data", (d) => (out += d));
       p.on("close", (code) => resolve({ status: code, stdout: out }));

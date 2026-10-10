@@ -1,10 +1,11 @@
 /**
  * v0.11.1 止血回归 — 逐条覆盖本轮 P0/P1 修复，防止回退
  */
-import { test } from "node:test";
+import { test, after } from "node:test";
+import { tmpdir } from "node:os";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { writeFileSync, readFileSync, existsSync, rmSync, mkdirSync, readdirSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync, rmSync, realpathSync, mkdtempSync, mkdirSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { perfCompare } from "../lib/perf-compare.js";
@@ -16,12 +17,14 @@ import { createServer } from "node:http";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BIN = join(__dirname, "..", "bin", "wl-skills-test.js");
-const TMP = join(process.cwd(), ".tmp-hotfix");
+const TMP = realpathSync(mkdtempSync(join(tmpdir(), "wl-test-hotfix-")));
+after(() => rmSync(TMP, { recursive: true, force: true }));
 
 function runCli(args, opts = {}) {
+  mkdirSync(opts.cwd || TMP, {recursive:true});
   return spawnSync(process.execPath, [BIN, ...args], {
     encoding: "utf-8",
-    cwd: opts.cwd || process.cwd(),
+    cwd: opts.cwd || TMP,
     timeout: 30000,
   });
 }

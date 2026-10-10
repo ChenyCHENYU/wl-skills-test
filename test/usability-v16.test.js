@@ -1,9 +1,10 @@
 /**
  * v0.16.0 可用性回归 — 配置档案 / .env / auth 自动登录与 401 重登 / CI 模板 / 诊断指引 / MCP 紧凑输出
  */
-import { test } from "node:test";
+import { test, after } from "node:test";
+import { tmpdir } from "node:os";
 import assert from "node:assert/strict";
-import { writeFileSync, readFileSync, existsSync, rmSync, mkdirSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync, rmSync, realpathSync, mkdtempSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
@@ -12,7 +13,8 @@ import { dirname } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BIN = join(__dirname, "..", "bin", "wl-skills-test.js");
-const TMP = join(process.cwd(), ".tmp-v16");
+const TMP = realpathSync(mkdtempSync(join(tmpdir(), "wl-test-v16-")));
+after(() => rmSync(TMP, { recursive: true, force: true }));
 
 function setupTmp() {
   if (existsSync(TMP)) rmSync(TMP, { recursive: true, force: true });
@@ -238,13 +240,13 @@ test("v16: MCP run_api 默认紧凑摘要，detail:full 才回全量", async () 
     }),
   );
   try {
-    const res = await server.callTool("wls_test_run_api", { contractPath: contract, baseUrl: url, token: "t" });
+    const res = await server.callTool("wls_test_run_api", { root: TMP, contractPath: contract, baseUrl: url, token: "t" });
     const parsed = JSON.parse(res.content[0].text);
     assert.equal(parsed.pass, true);
     assert.ok(parsed.failures !== undefined && Array.isArray(parsed.failures), "默认应回紧凑 failures 摘要");
     assert.equal(parsed.results, undefined, "默认不得回全量 results（token 浪费）");
 
-    const full = await server.callTool("wls_test_run_api", { contractPath: contract, baseUrl: url, token: "t", detail: "full" });
+    const full = await server.callTool("wls_test_run_api", { root: TMP, contractPath: contract, baseUrl: url, token: "t", detail: "full" });
     const parsedFull = JSON.parse(full.content[0].text);
     assert.ok(Array.isArray(parsedFull.results), "detail:full 应回全量");
   } finally {
@@ -262,19 +264,19 @@ test("v16: MCP audit 默认紧凑（TopN + 修复入口），report 默认紧凑
   const bad = join(TMP, "bad.spec.js");
   writeFileSync(bad, `import { test } from "@playwright/test";\ntest("随便测", async ({ page }) => {\n  await page.goto("https://prod.example.com/x");\n});\n`);
   try {
-    const compact = HANDLERS.wls_test_audit({ target: TMP });
+    const compact = HANDLERS.wls_test_audit({ root: TMP, target: TMP });
     assert.ok(compact.bySeverity !== undefined);
     assert.ok(Array.isArray(compact.topFindings), "默认应回 topFindings");
     assert.equal(compact.findings, undefined, "默认不得回全量 findings");
     assert.ok(compact.hint.includes("fix"), "应给修复入口指引");
 
-    const full = HANDLERS.wls_test_audit({ target: TMP, detail: "full" });
+    const full = HANDLERS.wls_test_audit({ root: TMP, target: TMP, detail: "full" });
     assert.ok(Array.isArray(full.findings), "detail:full 回全量");
 
     // report 紧凑
     const api = join(TMP, "api-result.json");
     writeFileSync(api, JSON.stringify({ summary: { entity: "X", total: 2, passed: 1, failed: 1, errors: 0, skipped: 0, passRate: 50, decision: "不通过" } }));
-    const rep = HANDLERS.wls_test_report_generate({ api, allowLegacy: true });
+    const rep = HANDLERS.wls_test_report_generate({ root: TMP, api, allowLegacy: true });
     assert.equal(rep.pass, false);
     assert.ok(Array.isArray(rep.failingChecks), "应回未达标项列表");
     assert.equal(rep.report, undefined, "默认不内联报告全文");

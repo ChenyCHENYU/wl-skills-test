@@ -1,0 +1,29 @@
+[
+  {
+    "task": "旧需求写过“生成测试用例”，本次只审查代码质量",
+    "status": "baseline",
+    "skills": [],
+    "mode": "inspect"
+  },
+  {
+    "task": "只检查文档，不运行测试",
+    "domain": "documentation",
+    "status": "not-applicable",
+    "skills": [],
+    "mode": "inspect"
+  },
+  {
+    "task": "不生成测试用例，只审计现有测试代码",
+    "status": "baseline",
+    "skills": [],
+    "mode": "inspect"
+  },
+  {
+    "task": "只解释接入测试准备事项，暂不执行测试",
+    "status": "matched",
+    "skills": [
+      "test-onboarding"
+    ],
+    "mode": "explain"
+  }
+]

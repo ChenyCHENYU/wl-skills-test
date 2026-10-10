@@ -1,0 +1,40 @@
+[
+  {
+    "id": "audit",
+    "command": [
+      "audit"
+    ],
+    "when": {
+      "checks": [
+        "test-code-audit",
+        "changed-behavior-tests"
+      ]
+    },
+    "parameters": {
+      "type": "object",
+      "required": [
+        "targets"
+      ],
+      "properties": {
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "sideEffects": {
+      "business": "none",
+      "records": true,
+      "reports": "project-external-supported"
+    },
+    "authorization": "read-only-business-check",
+    "receipt": "package-execution-record-v1"
+  }
+]
