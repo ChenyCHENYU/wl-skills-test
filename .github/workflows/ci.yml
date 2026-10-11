@@ -23,6 +23,9 @@ jobs:
         run: npm ci --ignore-scripts
       - name: 运行完整测试（单元/集成/自一致性/MCP stdio/mock 后端）
         run: npm run verify
+      - name: 审计锁定的运行时依赖
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        run: npm audit --omit=dev --audit-level=moderate
       - name: npm pack 校验（发布产物完整性）
         run: npm pack --dry-run --ignore-scripts
 
