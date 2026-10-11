@@ -50,19 +50,19 @@ design ──→ kit ──→ ui ──→ bd ──→ test
 
 ## 公开集成协议 v1
 
-供 harness、客户端或其他编排层以统一 JSON 入口调用本包判定与状态能力（业务执行仍走本包 CLI/MCP，不因协议新增兄弟包依赖）。
+供 harness、客户端或其他编排层以统一 JSON 入口判定、查询并调用本包声明的业务只读检查器。业务执行复用本包原 CLI，参数映射由本包维护；不新增兄弟包或 Harness 运行时依赖。
 
 ```bash
-wl-skills-test protocol describe --json                      # 能力目录、五操作映射、请求/响应 Schema、错误码
+wl-skills-test protocol describe --json                      # 能力目录、六操作映射、请求/响应 Schema、错误码
 wl-skills-test protocol request --input-file request.json --json
 ```
 
-- 操作：`route` / `explain`（只读判定）、`task`（判定并持久化计划，尚未执行）、`status`（回查本包执行回执）、`doctor-host`（宿主入口静态诊断）。
-- 请求字段：`protocolVersion`(1)、`operation`、`requestId`、`runId`、`projectRoot`、`task`、`targets`、`skill`、`host`+ `domain`（领域上下文，参与判定）。
-- 统一信封：`{ ok, result | error, diagnostics }`；机器结果与诊断分离；非法输入在触达执行器前判 `invalid-input`，不写入任何记录。
-- 错误码：`unsupported-protocol` / `unknown-operation` / `missing-input` / `invalid-input` / `internal-error`；请求失败（exit 2）时 stdout 仍为可解析 JSON 信封。
+- 操作：`route` / `explain`（只读判定）、`task`（判定并持久化计划，尚未执行）、`status`（回查本包执行回执）、`doctor-host`（宿主入口静态诊断）、`execute`（按真实计划调用本包只读审计器）。旧五操作保持兼容；`features` 中的 `executor-invoke-v1` 表示支持稳定执行入口。
+- 判定请求字段：`protocolVersion`(1)、`operation`、`requestId`、`runId`、`projectRoot`、`task`、`targets`、`skill`、`host`+ `domain`（领域上下文，参与判定）；执行请求另用 `executorId` / `parameters` Schema。
+- 统一信封：`{ ok, result | error, diagnostics }`；机器结果与诊断分离；判定输入非法返回 `invalid-input`，执行参数非法返回 `invalid-executor-input`，均在触达执行器前拒绝、不写入任务或执行记录。
+- 错误码以 `protocol describe` 的完整 `errorCodes` 为准，包含 `unsupported-protocol` / `unknown-operation` / `missing-input` / `invalid-input`，以及执行准入、Schema、路径、输出预算等专用错误；请求失败（exit 2）时 stdout 仍为可解析 JSON 信封。
 - **`ok=true` 只表示协议调用成功，不代表业务验证通过**；业务状态以 `result` 内 `validationStatus` / `executionStatus` 为准（仅计划时为 `unverified` / `not-executed`）。
-- 副作用：仅 `task` 写入本包自己的 runs 目录（见 describe 中各操作 `sideEffects`）；其余操作只读。
+- 副作用：`task` 写本包计划；`execute` 调用审计器、写本包 runs 回执，并在项目外生成报告（真实路径见 `result.execution.reportsDirectory`）。协议调用不授予业务文件修改权限。其余操作只读，各操作以 `sideEffects` 明确声明。
 - 协议实现为本包内置的同源快照 `integration-protocol.cjs`，五包一致；跨包一致性由 conformance `integration-protocol.check.cjs` 验收。
 
 ## 📦 安装
@@ -636,11 +636,11 @@ Copyright © 2026 AGILE TEAM · All Rights Reserved
 
 任务判定保留原始文本，并将当前请求、历史引用和明确否定分开。自然语言判定覆盖已公开语料与规则，不能承诺任意表述都自动命中；遇到歧义或缺口应补充目标/领域或显式指定本包能力，不能静默选择。编辑前显示真实 `notice`，包括版本、技能、规则、目标、runId、动作与待检查项。
 
-`protocol describe --json` 声明 `task-intent-v1`、`result-core-v1`、`executor-catalog-v1`；`schemas.resultCore` 与五操作 `schemas.results` 可供宿主验证。原有结果字段保留，新增 `result.integration`：项目适用范围、动作模式、规则身份、目标、就绪状态、允许执行器和真实执行/验证状态。`ok` 只表示调用成功。未声明使用的输入字段进入 diagnostics，不会转成授权依据。
+`protocol describe --json` 声明 `task-intent-v1`、`result-core-v1`、`executor-catalog-v1` 与 `executor-invoke-v1`；`schemas.resultCore` 与各操作 `schemas.results` 可供宿主验证。原有结果字段保留，`result.integration` 提供项目适用范围、动作模式、规则身份、目标、就绪状态、允许执行器和真实执行/验证状态。`execute` 将领域与 CLI 参数映射收回本包，宿主只传公开结构化参数。`ok` 只表示调用成功。判定操作未声明使用的输入字段进入 diagnostics，不会转成授权依据；执行参数按完整 Schema 拒绝不合法字段。
 
 `action.mode` 为 explain/plan/inspect/apply/unspecified；解释和规划不自动启动检查。`businessWritesAuthorized=false`，任务意图不能替代业务写入授权。`ruleRefs` 为包自有规则身份（包名、规则 ID、版本、来源、性质），自然语言约束有稳定 ID；原规则名称与列表保留。所有规则的机械/语义验证仍以实际回执为准。
 
-`inventory.executors` 声明本包业务只读检查器、目标与参数 Schema；其适用条件由本包判定。外部适配器须核对同项目、同包、同版本、同 runId 的真实计划、新鲜度与允许动作，指定一个目标，不能扩大范围；支持规则子集的执行器不得选择计划外规则。多目标需拆分调用。五包和 Harness 均为可选组合，不新增兄弟包或 Harness 运行时依赖；卸下适配器后原 CLI/MCP 继续独立使用。
+`inventory.executors` 声明本包业务只读检查器、目标与参数 Schema；其适用条件由本包判定。外部适配器须核对同项目、同包、同版本、同 runId 的真实计划、新鲜度与允许动作，指定一个目标，不能扩大范围；支持规则子集的执行器不得选择计划外规则。多目标先拆分任务计划，再按每个计划的授权目标分别调用。五包和 Harness 均为可选组合，不新增兄弟包或 Harness 运行时依赖；卸下适配器后原 CLI/MCP 继续独立使用。
 
 ### 任务反馈与执行边界
 
