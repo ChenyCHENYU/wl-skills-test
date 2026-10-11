@@ -18,10 +18,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+          cache: npm
+      - name: 安装锁定依赖
+        run: npm ci --ignore-scripts
       - name: 运行完整测试（单元/集成/自一致性/MCP stdio/mock 后端）
-        run: npm test
+        run: npm run verify
       - name: npm pack 校验（发布产物完整性）
-        run: npm pack --dry-run
+        run: npm pack --dry-run --ignore-scripts
 
   publish:
     if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'release')
@@ -33,7 +36,8 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
-      - run: npm publish --access public
+      - run: npm ci --ignore-scripts
+      - run: npm publish --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
