@@ -34,10 +34,10 @@ test("report: 旧来源达标但没有任务回执 → 验证未决", () => {
     const result = generateReport({ api, playwright: pw, jmeter: jm, defects, cases: 100 });
     assert.equal(result.error, undefined);
     assert.equal(result.pass, false);
-    assert.equal(result.domainPass, true);
+    assert.equal(result.domainPass, false, "DI 缺实际执行样本不能算业务质量通过");
     assert.equal(result.validationStatus, "unverified");
     assert.equal(result.decision, "blocked");
-    assert.ok(result.report.includes("具备上线条件"));
+    assert.ok(result.report.includes("不具备上线条件"));
     assert.ok(result.report.includes("API 接口冒烟"));
     assert.ok(result.report.includes("Playwright"));
     assert.ok(result.report.includes("JMeter"));
@@ -107,7 +107,7 @@ test("report: 自动发现 test-reports/ 维度结果", () => {
     // 端到端：发现的结果直接喂 generateReport
     const result = generateReport({ api: found.api, playwright: found.playwright, defects: found.defects, cases: 100 });
     assert.equal(result.pass, false);
-    assert.equal(result.domainPass, true);
+    assert.equal(result.domainPass, false, "自动发现缺陷文件不补造 DI 样本");
     assert.equal(result.validationStatus, "unverified");
     assert.equal(result.snapshot.api, 100);
     assert.equal(result.snapshot.ui, 100);

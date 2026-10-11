@@ -36,3 +36,18 @@ jobs:
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  compatibility:
+    name: Published baseline upgrade and coexistence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run compatibility:check -- --output compatibility-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compatibility-evidence
+          path: compatibility-evidence

@@ -111,21 +111,23 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_env_check",
-    description: "校验测试环境连通性（前端/后端/数据库）",
+    description: "检查本地测试前置条件（Node/已分发资产/测试命令）；不验证前端、后端或数据库连通性",
     inputSchema: {
       type: "object",
       properties: {
         env: { type: "string", description: "环境标识" },
+        root: { type: "string", description: "当前项目根；默认 cwd，不借父项目资产" },
       },
     },
   },
   {
     name: "wls_test_quality_analyze",
-    description: "DI 缺陷指数质量评估与上线判定",
+    description: "DI 统计与执行证据判定；缺分母或实际样本时保持未验证",
     inputSchema: {
       type: "object",
       properties: {
         roundResults: { type: "array", description: "各轮执行结果" },
+        caseCount: { type: "number", description: "实际执行样本数，正整数且须与 roundResults 执行计数一致" },
         defects: { type: "array", description: "缺陷清单" },
       },
     },
@@ -268,7 +270,8 @@ export const TOOL_DESCRIPTORS = [
         e2eDir: { type: "string", description: "E2E 工程目录" },
         smokeResult: { type: "string", description: "run-api JSON 结果路径" },
         defects: { type: "string", description: "缺陷清单 JSON 路径" },
-        cases: { type: "number", description: "总用例数" },
+        cases: { type: "number", description: "实际执行样本数（正整数，与执行摘要一致）" },
+        roundResults: { type: "array", description: "DI 各轮执行摘要；不提供时复用 smokeResult" },
         perfCurrent: { type: "string", description: "当前性能结果" },
         perfBaseline: { type: "string", description: "性能基线" },
       },

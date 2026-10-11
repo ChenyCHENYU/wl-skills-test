@@ -40,8 +40,10 @@ test("quality-gate: = 风格参数，通过场景退出码 0", () => {
   setupTmp();
   const defects = join(TMP, "pass.json");
   writeFileSync(defects, JSON.stringify(PASS_DEFECTS));
+  const rounds = join(TMP, "rounds.json");
+  writeFileSync(rounds, JSON.stringify([{ total: 200, passed: 200, failed: 0, errors: 0, skipped: 0, passRate: 100 }]));
   try {
-    const r = runGate(["--defects=" + defects, "--cases=200"]);
+    const r = runGate(["--defects=" + defects, "--cases=200", "--round-results=" + rounds]);
     assert.equal(r.status, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
     assert.ok(r.stdout.includes("质量门通过"));
   } finally {

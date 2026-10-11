@@ -160,5 +160,6 @@ test("v23: MCP 数值参数类型校验——字符串数字被 -32602 拒绝", 
   const r = HANDLERS.wls_test_quality_analyze({ defects: [], caseCount: "150" });
   assert.equal(r.diDensity, 0, "caseCount=150 时空缺陷密度应为 0（而非被吞成 50 的口径）");
   const r2 = HANDLERS.wls_test_quality_analyze({ defects: [{ severity: "general", status: "closed", module: "a" }] });
-  assert.equal(r2.diDensity, 0.02, "未传 caseCount 回退 50（di=1/50）");
+  assert.equal(r2.diDensity, null, "未传 caseCount 不编造默认分母");
+  assert.equal(r2.releaseDecision, "unverified");
 });

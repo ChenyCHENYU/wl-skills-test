@@ -1,8 +1,8 @@
 /**
  * MCP 工具 Handler 实现
  */
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, resolve, dirname, extname, sep } from "node:path";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { join, resolve, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { consumeContract, generateTestCaseMatrix } from "../../lib/contract-consumer.js";
 import { generateSmokeSuite, calculateDI, exportCasesMarkdown } from "../../lib/test-codegen.js";
@@ -24,6 +24,7 @@ import { planTask, taskStatus, hostDiagnostic } from "../../lib/cli/commands/tas
 import { compactApiResult, compactAuditResult, compactReportResult } from "../../lib/shared/compact.js";
 import { computePlanHash } from "../../lib/plan-hash.js";
 import { confirmAndWrite } from "../../lib/write-guard.js";
+import { collectFixTargets } from "../../lib/fix-targets.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -168,40 +169,28 @@ export async function handleGenContract(args) {
 }
 
 // ── wls_test_env_check ─────────────────────────
-export function handleEnvCheck(args) {
-  // 优先用显式 root；否则从 cwd 向上探测 .github（MCP server 的 cwd 不一定是项目根）
-  const root = args.root || findProjectRoot(process.cwd());
+export function handleEnvCheck(args = {}) {
+  // 当前项目的本地前置条件，不借父项目资产，不使用可能自动下载依赖的 npx。
+  const root = resolve(args.root || process.cwd());
   const nodeMajor = parseInt(process.version.replace(/^v/, "").split(".")[0], 10);
   const checks = {
     root,
     nodeVersion: process.version,
     nodeOk: nodeMajor >= 20,
-    playwright: checkCommandAvailable("npx playwright --version").ok,
+    playwright: ["@playwright/test", "playwright"].some(name => existsSync(join(root, "node_modules", name, "package.json"))),
     jmeter: checkCommandAvailable("jmeter --version").ok,
     standardsDir: existsSync(join(root, ".github", "standards")),
     skillsDir: existsSync(join(root, ".github", "skills")),
   };
   const allPass = checks.nodeOk && checks.standardsDir && checks.skillsDir;
-  return { checks, ready: allPass };
-}
-
-function findProjectRoot(start) {
-  let dir = resolve(start);
-  while (true) {
-    if (existsSync(join(dir, ".github", "standards")) || existsSync(join(dir, ".github", "skills"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return resolve(start);
-    dir = parent;
-  }
+  return { checks, ready: allPass, readinessScope: "local-prerequisites", networkConnectivity: "unverified",
+    hint: "ready 仅表示本地 Node 与规范/技能资产前置条件；前端、后端、数据库连通性须另行实际验证" };
 }
 
 // ── wls_test_quality_analyze ───────────────────
-export function handleQualityAnalyze(args) {
-  const defects = args.defects || [];
-  // 数值容错：数字字符串可用（"150"→150），非法回退 50（此前 0 会被 || 吞成 50，字符串则 NaN）
-  const parsed = Number(args.caseCount);
-  const caseCount = Number.isFinite(parsed) && args.caseCount !== undefined ? parsed : 50;
-  return calculateDI(defects, caseCount);
+export function handleQualityAnalyze(args = {}) {
+  const defects = args.defects === undefined ? [] : args.defects;
+  return calculateDI(defects, args.caseCount, { roundResults: args.roundResults });
 }
 
 // ── wls_test_jmeter_validate ───────────────────
@@ -277,7 +266,6 @@ function checkCommand(cmd) {
 // ── wls_test_audit ─────────────────────────────
 export function handleAudit(args) {
   const target = args.target || ".";
-  if (!existsSync(target)) return { error: "目标路径不存在" };
   const result = observeSync("audit", args, [target], () => audit(target));
   if (result.error) return result;
   // token 经济学：默认紧凑摘要（分布 + TopN 违规 + 修复入口）；detail:"full" 才回全量 findings
@@ -292,8 +280,14 @@ export function handleFix(args) {
 
   // 安全约束：AI 可调用工具默认只预览，必须显式 confirm: true 才实际写文件
   const confirmed = args.confirm === true;
+  let collected;
+  try { collected = collectFixTargets(target, { projectRoot: args.root || process.cwd() }); }
+  catch (error) { return { error: error.message, errorCode: error.code || "FIX_TARGET_ERROR", validationStatus: "unverified" }; }
+  const { files, skippedEntries } = collected;
+  const coverageStatus = !files.length ? "unverified" : skippedEntries.length ? "partial" : "complete";
+  if (!files.length) return { error: "没有可安全修复的 JS/TS 样本", validationStatus: "unverified", skippedEntries, fixed: 0, total: 0 };
   if (!confirmed) {
-    const preview = collectFixFiles(target)
+    const preview = files
       .slice(0, 20)
       .map((file) => {
         const result = autoFix(file);
@@ -304,16 +298,9 @@ export function handleFix(args) {
       dryRun: true,
       hint: "预览模式。确认后传 confirm: true 执行实际写入",
       files: preview,
+      coverageStatus,
+      skippedEntries,
     };
-  }
-
-  // 写路径约束：MCP 客户端可传任意路径，实际写入必须限制在 root（默认 cwd）之下，
-  // 防止 AI 误触项目外文件（系统配置/用户目录）
-  const root = resolve(args.root || process.cwd());
-  const files = collectFixFiles(target);
-  const outside = files.filter((f) => !resolve(f).startsWith(root + sep) && resolve(f) !== root);
-  if (outside.length > 0) {
-    return { error: `拒绝写入 root 之外的路径: ${outside.slice(0, 3).join(", ")}（root=${root}）` };
   }
 
   const pendingWrites = [];
@@ -331,26 +318,8 @@ export function handleFix(args) {
       return { error: "写入失败已回滚", errors: writeResult.errors, rollbackErrors: writeResult.rollbackErrors };
     }
   }
-  return { fixed: pendingWrites.length, total: files.length, details };
-}
-
-function collectFixFiles(target) {
-  const stat = statSync(target);
-  const files = [];
-  if (stat.isDirectory()) {
-    const walk = (dir) => {
-      for (const e of readdirSync(dir)) {
-        const full = join(dir, e);
-        const s = statSync(full);
-        if (s.isDirectory() && !e.startsWith("node_modules") && !e.startsWith(".")) walk(full);
-        else if (s.isFile() && (e.endsWith(".js") || e.endsWith(".ts"))) files.push(full);
-      }
-    };
-    walk(target);
-  } else {
-    files.push(target);
-  }
-  return files;
+  return { fixed: pendingWrites.length, total: files.length, details, coverageStatus, skippedEntries,
+    validationStatus: "unverified", hint: "自动修复不等于规则全部通过，请执行 audit 复验" };
 }
 
 // ── wls_test_run_api ───────────────────────────
@@ -496,8 +465,8 @@ export async function handleGate(args) {
     e2eDir: args.e2eDir,
     smokeResult: args.smokeResult,
     defects: args.defects,
-    // 与 CLI 同口径：数值参数容错解析（字符串 "150" 也能用）
-    cases: args.cases !== undefined ? parseInt(args.cases, 10) || 50 : 50,
+    cases: args.cases,
+    roundResults: args.roundResults,
     perfCurrent: args.perfCurrent,
     perfBaseline: args.perfBaseline,
     perfThreshold: args.perfThreshold !== undefined ? parseFloat(args.perfThreshold) || 15 : 15,

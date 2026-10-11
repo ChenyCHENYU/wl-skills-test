@@ -100,8 +100,8 @@ test("MCP: wls_test_quality_analyze DI 计算", () => {
   assert.equal(result.releaseDecision, "blocked");
 });
 
-test("MCP: wls_test_quality_analyze 无缺陷时允许上线", () => {
-  const result = HANDLERS.wls_test_quality_analyze({ defects: [], caseCount: 100 });
+test("MCP: wls_test_quality_analyze 无缺陷且有实际样本时允许上线", () => {
+  const result = HANDLERS.wls_test_quality_analyze({ defects: [], caseCount: 100, roundResults: [{ total: 100, passed: 100, failed: 0, errors: 0, skipped: 0, passRate: 100 }] });
   assert.equal(result.di, 0);
   assert.equal(result.releaseDecision, "pass");
 });
@@ -145,6 +145,8 @@ test("MCP: wls_test_env_check 返回环境信息", () => {
   const result = HANDLERS.wls_test_env_check({});
   assert.ok(result.checks.nodeVersion);
   assert.equal(typeof result.ready, "boolean");
+  assert.equal(result.readinessScope, "local-prerequisites");
+  assert.equal(result.networkConnectivity, "unverified");
 });
 
 test("MCP: wls_test_smoke_select 无路径返回错误", () => {

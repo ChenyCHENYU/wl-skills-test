@@ -2,6 +2,8 @@
 
 > 版本：v0.9.0 · 创建日期：2026-08-04 · 维护：AGILE TEAM
 
+> 本文保留早期架构与演进设计记录，其中版本、工具数和“当前/第二阶段”不代表现行实现。现行公开能力以 [README](../README.md)、`protocol describe`、[维护契约](maintenance-contract.md) 和 [质量证据契约](quality-evidence.md) 为准；本包可独立使用，图示协作不要求安装兄弟包。
+
 ---
 
 ## 一、定位

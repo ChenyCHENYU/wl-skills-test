@@ -38,7 +38,7 @@ const opts = parseArgs(process.argv.slice(2));
 const defectsArg = typeof opts.defects === "string" ? opts.defects : null;
 const auditArg = typeof opts["audit-dir"] === "string" ? opts["audit-dir"] : null;
 const smokeArg = typeof opts["smoke-result"] === "string" ? opts["smoke-result"] : null;
-const caseCount = typeof opts.cases === "string" ? parseInt(opts.cases, 10) : 50;
+const caseCount = typeof opts.cases === "string" && opts.cases.trim() ? Number(opts.cases) : opts.cases;
 
 // The standalone CI entry consumes exactly the same evidence checks as CLI/MCP.
 console.log("\n===== 质量门 CI 检查 =====\n");
@@ -47,7 +47,7 @@ if (!defectsArg && !auditArg && !smokeArg) {
   console.log("用法: quality-gate.js --defects <缺陷JSON> --cases <N> [--audit-dir <目录>] [--smoke-result <冒烟结果>]");
   process.exitCode = 1;
 } else {
-  const result = await runGate({ defects: defectsArg, cases: caseCount, auditDir: auditArg, smokeResult: smokeArg });
+  const result = await runGate({ defects: defectsArg, cases: caseCount, auditDir: auditArg, smokeResult: smokeArg, roundResults: opts["round-results"] });
   if (result.error || result.inputErrors?.length) {
     for (const error of result.inputErrors || [result.error]) console.error(`  ✗ 输入错误: ${error}`);
     console.error("\n❌ 质量门输入无效或未验证，阻断上线（fail-closed）\n");

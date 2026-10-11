@@ -39,8 +39,8 @@ test("write-guard: 非生产环境不阻断", () => {
   assert.equal(plan.blocked, false);
 });
 
-test("DI: 无缺陷时 DI=0 且允许上线", () => {
-  const result = calculateDI([], 100);
+test("DI: 无缺陷且有实际执行样本时允许上线", () => {
+  const result = calculateDI([], 100, { roundResults: [{ total: 100, passed: 100, failed: 0, errors: 0, skipped: 0, passRate: 100 }] });
   assert.equal(result.di, 0);
   assert.equal(result.level, "green");
   assert.equal(result.releaseDecision, "pass");
@@ -66,7 +66,8 @@ test("DI: 严重缺陷计算正确", () => {
   );
   assert.equal(result.di, 14.1);
   assert.equal(result.diDensity, 0.141);
-  assert.equal(result.level, "yellow");
+  assert.equal(result.metricLevel, "yellow");
+  assert.equal(result.releaseDecision, "blocked", "单模块缺陷不收敛，缺样本也不能隐藏已有失败");
 });
 
 test("smoke: 冒烟套件不超过限制", () => {

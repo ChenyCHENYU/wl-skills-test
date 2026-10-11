@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.32.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.33.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-13-purple.svg" />
@@ -381,7 +381,7 @@ e2e/
 | `wls_test_contract_read` | 读取 kit/bd 契约，提取可测试资源 |
 | `wls_test_case_generate` | 按契约+需求生成测试用例 |
 | `wls_test_smoke_select` | 从全量用例筛选冒烟套件 |
-| `wls_test_env_check` | 校验测试环境连通性 |
+| `wls_test_env_check` | 本地测试前置条件；网络连通性保持未验证 |
 | `wls_test_quality_analyze` | DI 缺陷指数质量评估 + 上线判定 |
 | `wls_test_jmeter_validate` | 校验 JMeter jmx 有效性 |
 | `wls_test_audit` | 审计测试代码（T1-T25 确定性规则） |
@@ -410,6 +410,12 @@ npx @agile-team/wl-skills-test --mcp
 ---
 
 ## 🎖️ DI 质量门（CI 集成）
+
+DI 统计与执行验证分别显示。缺 `cases/caseCount`、零样本、空 `roundResults` 或计数冲突保持 `unverified`，不会编造默认分母 50。`--round-results` 接受真实执行摘要数组；也可复用 `--smoke-result`，分母须与实际执行数一致。MCP 的 `caseCount` 和 `roundResults` 已公开声明。当前提供检查项达标不能替代项目完整 CI、历史趋势或同 runId 的任务证据。具体输入与兼容边界见 [DI 证据契约](docs/quality-evidence.md)。
+
+自动修复限定授权项目的目标子树，符号链接不跟随；跳过项明确显示 `partial`，空范围未验证，范围外目标零写入拒绝。修复后须审计复验，修复数量不能作为质量通过证据。
+
+`wls_test_env_check` 的 `ready` 仅表示当前项目本地 Node 与规范/技能资产前置条件，不检测前端、后端或数据库。Playwright 只检查本地包，不经 npx 自动下载；网络始终返回 `networkConnectivity: "unverified"`，须另行真实探测。
 
 ```bash
 # CI 中运行质量门（退出码 0=通过 / 1=阻断；参数支持 --x=v 与 --x v 两种风格）
@@ -641,3 +647,7 @@ Copyright © 2026 AGILE TEAM · All Rights Reserved
 编辑前展示实际 `notice` 的包版本、判定、动作、技能/规则、目标、runId、待检查项与版本对齐信息；解释/规划和明确禁止检查时不自动执行检查。`runtime=mismatch/invalid` 或 `planStale=true` 必须先同步本包或重新判定。只读 `inspect` 输入变化后重新 `task`；`apply` 完成正常业务修改后可用同 runId 做实际复扫，但规则、配置或版本变化仍需重新判定。
 
 单包只读取自身公开能力；多包复用同 runId 并各存各的证据。`matched/ready/ok=true` 仅说明判定或调用成功，是否完成以实际 `executionStatus/validationStatus/checkedFiles` 为准。未接入或不适用的项目不借父目录规则；宿主发现、模型读取、反馈展示没有真实证据时继续标记未验证。
+
+维护边界、结构化执行和防漂移验收：[维护契约](docs/maintenance-contract.md)。
+
+1.0 评估与稳定公开面准入：[版本成熟度](docs/release-maturity.md)。

@@ -44,7 +44,7 @@ test("gate: 全部通过场景（审计+E2E+冒烟+DI）", async () => {
   writeFileSync(defects, JSON.stringify([{ severity: "minor", status: "closed", module: "a" }]));
 
   try {
-    const r = await runGate({ auditDir, e2eDir, smokeResult: smoke, defects, cases: 100 });
+    const r = await runGate({ auditDir, e2eDir, smokeResult: smoke, defects, cases: 2 });
     assert.equal(r.error, undefined);
     assert.equal(r.pass, true, JSON.stringify(r.checks));
     assert.ok(r.checks.length >= 5);
