@@ -108,7 +108,7 @@ test("quality-gate: 从包外目录调用 --audit-dir 正常工作（路径解�
 test("quality-gate: --smoke-result 通过率不足 95% 退出码 1", () => {
   setupTmp();
   const smoke = join(TMP, "smoke.json");
-  writeFileSync(smoke, JSON.stringify({ passRate: 80 }));
+  writeFileSync(smoke, JSON.stringify({ total: 5, passed: 4, failed: 1, errors: 0, skipped: 0, passRate: 80 }));
   try {
     const r = runGate(["--smoke-result=" + smoke]);
     assert.equal(r.status, 1);
@@ -121,7 +121,7 @@ test("quality-gate: --smoke-result 通过率不足 95% 退出码 1", () => {
 test("quality-gate: --smoke-result 通过率达标退出码 0", () => {
   setupTmp();
   const smoke = join(TMP, "smoke.json");
-  writeFileSync(smoke, JSON.stringify({ passRate: 100 }));
+  writeFileSync(smoke, JSON.stringify({ total: 2, passed: 2, failed: 0, errors: 0, skipped: 0, passRate: 100 }));
   try {
     const r = runGate(["--smoke-result", smoke]);
     assert.equal(r.status, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);

@@ -246,7 +246,7 @@ test("CLI: 未知命令非零退出", () => {
 
 test("CLI: gate 聚合卡门（通过场景零退出）", () => {
   setupTmp();
-  writeFileSync(join(TMP, "smoke.json"), JSON.stringify({ summary: { passRate: 100 } }));
+  writeFileSync(join(TMP, "smoke.json"), JSON.stringify({ summary: { total: 2, passed: 2, failed: 0, errors: 0, skipped: 0, passRate: 100 } }));
   try {
     const r = runCli(["gate", "--smoke-result", join(TMP, "smoke.json")]);
     assert.equal(r.status, 0, `stdout: ${r.stdout}`);

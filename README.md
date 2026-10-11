@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.31.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.32.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-13-purple.svg" />
@@ -126,6 +126,12 @@ npx @agile-team/wl-skills-test report --run-id <ID>
 `matched` 选定专项技能；`baseline` 适用代码任务测试基线；`ambiguous` 需要明确工作流；`gap` 缺少能力或必要文件；`not-applicable` 明确不适用；`needs-context` 缺少判断上下文。同一用户任务涉及多个已安装且适用的包时复用同一 `runId`（`--run-id` / `WL_TASK_RUN_ID`），本包仍独立可用。`task` 仅记录规划，`route/explain` 只读。开工反馈所选技能和约束，结束分别反馈执行与验证状态；缺口和建议记录在本包任务事件中，由 `status` 汇总。入口不授权发送接口/压测请求。
 
 不可变回执位于 `.wl-skills-test/runs/<runId>/`，真实 `audit/run-api/run-playwright/run-jmeter/e2e-check/gate` 的结果位于 `test-reports/runs/<runId>/`。完成执行不等于通过验证：失败断言、跳过、零样本和输入变化都有独立状态；`status` 重新比对来源哈希识别过期证据。`report` 只选择同一任务，核对回执、结果摘要哈希与来源新鲜度，不按文件时间拼接。`--allow-legacy` 可导入旧结果诊断，验证仍为未决。宿主是否发现/加载入口、MCP 是否连接、模型是否遵循规则保持 `unverified`，静态诊断不冒充真实宿主观测。MCP 用 `wls_test_task` 的 `task/route/explain/status/doctor-host` action 提供相同入口。
+
+`audit` 只机械检查实际适用的 Playwright 测试、JMeter 文件和测试用例文档。空目录、普通业务源码、未读条目及符号链接跳过返回 `pass:null / unverified`，CLI 非零退出并显示原因；不会把零发现当通过。目录扫描不隐式跟随兄弟项目链接或目录环。`gate` 与独立 `scripts/quality-gate.js` 共用证据校验：冒烟结果必须有一致的非零执行计数；若提供明细、断言、清理或执行状态，它们也必须一致且可证明完成。仅 `passRate:100`、零样本、失败、未完成清理均不能允许上线。充分计数的旧顶层 JSON 可读，但不据此声称宿主或模型已验证。
+
+`run-playwright` 支持 list/line/dot 文本统计与 json reporter 原生 stdout（共用报告解析器）。JUnit/XML、HTML 和自定义 reporter 的统计解析尚未支持，结果保持未验证，不能因进程退出 0 就通过；原生 JSON 格式错误同样拒绝假绿。进程非零退出、超时、输出超限与零实际用例均不能通过。质量阈值沿用现有策略，但失败断言仍在任务验证状态中保留。
+
+`run-playwright` 保留外部进程退出码、超时及输出超限；非零退出不能被高通过率覆盖，零实际用例保持未验证。`--timeout <毫秒>` 可显式限制等待（最低 1000）；超时先终止所属进程组，宽限期后强制结束，部分统计保留供诊断。
 
 任务范围按执行器实际检查的文件核对：审计记录适用规则处理的文件，API 记录读取的页面规格、接口契约、项目 profile 和字典，JMeter 记录执行的 JMX。目录来源快照只用于识别变化，不表示目录内每个文件都通过检查。当前 Playwright 输出只有执行统计，无法确认业务源码覆盖范围；显式任务文件没有实际覆盖证据时保持 `partial`。关联契约或规则变化后，旧回执不能继续作为通过依据。
 
@@ -629,3 +635,9 @@ Copyright © 2026 AGILE TEAM · All Rights Reserved
 `action.mode` 为 explain/plan/inspect/apply/unspecified；解释和规划不自动启动检查。`businessWritesAuthorized=false`，任务意图不能替代业务写入授权。`ruleRefs` 为包自有规则身份（包名、规则 ID、版本、来源、性质），自然语言约束有稳定 ID；原规则名称与列表保留。所有规则的机械/语义验证仍以实际回执为准。
 
 `inventory.executors` 声明本包业务只读检查器、目标与参数 Schema；其适用条件由本包判定。外部适配器须核对同项目、同包、同版本、同 runId 的真实计划、新鲜度与允许动作，指定一个目标，不能扩大范围；支持规则子集的执行器不得选择计划外规则。多目标需拆分调用。五包和 Harness 均为可选组合，不新增兄弟包或 Harness 运行时依赖；卸下适配器后原 CLI/MCP 继续独立使用。
+
+### 任务反馈与执行边界
+
+编辑前展示实际 `notice` 的包版本、判定、动作、技能/规则、目标、runId、待检查项与版本对齐信息；解释/规划和明确禁止检查时不自动执行检查。`runtime=mismatch/invalid` 或 `planStale=true` 必须先同步本包或重新判定。只读 `inspect` 输入变化后重新 `task`；`apply` 完成正常业务修改后可用同 runId 做实际复扫，但规则、配置或版本变化仍需重新判定。
+
+单包只读取自身公开能力；多包复用同 runId 并各存各的证据。`matched/ready/ok=true` 仅说明判定或调用成功，是否完成以实际 `executionStatus/validationStatus/checkedFiles` 为准。未接入或不适用的项目不借父目录规则；宿主发现、模型读取、反馈展示没有真实证据时继续标记未验证。

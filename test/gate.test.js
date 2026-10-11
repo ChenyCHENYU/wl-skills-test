@@ -39,7 +39,7 @@ test("gate: 全部通过场景（审计+E2E+冒烟+DI）", async () => {
   generateE2eScaffold(specFile, { outputDir: e2eDir });
 
   const smoke = join(TMP, "smoke.json");
-  writeFileSync(smoke, JSON.stringify({ summary: { passRate: 100 } }));
+  writeFileSync(smoke, JSON.stringify({ summary: { total: 2, passed: 2, failed: 0, errors: 0, skipped: 0, passRate: 100 } }));
   const defects = join(TMP, "defects.json");
   writeFileSync(defects, JSON.stringify([{ severity: "minor", status: "closed", module: "a" }]));
 
@@ -57,7 +57,7 @@ test("gate: 全部通过场景（审计+E2E+冒烟+DI）", async () => {
 test("gate: 冒烟不达标阻断", async () => {
   mkdirSync(TMP, { recursive: true });
   const smoke = join(TMP, "smoke.json");
-  writeFileSync(smoke, JSON.stringify({ summary: { passRate: 60 } }));
+  writeFileSync(smoke, JSON.stringify({ summary: { total: 5, passed: 3, failed: 2, errors: 0, skipped: 0, passRate: 60 } }));
   try {
     const r = await runGate({ smokeResult: smoke });
     assert.equal(r.pass, false);
