@@ -25,6 +25,8 @@ import { compactApiResult, compactAuditResult, compactReportResult } from "../..
 import { computePlanHash } from "../../lib/plan-hash.js";
 import { confirmAndWrite } from "../../lib/write-guard.js";
 import { collectFixTargets } from "../../lib/fix-targets.js";
+import { describeSitTemplates, generateSitDelivery } from '../../lib/sit-delivery.js';
+import { checkSitFile } from '../../lib/sit-execution.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -356,7 +358,7 @@ export async function handleRunPlaywright(args) {
 
 // ── wls_test_run_jmeter ────────────────────────
 export async function handleRunJmeter(args) {
-  return observe("run-jmeter", args, [args.jmxPath], () => runJmeter({ jmxPath: args.jmxPath, threads: args.threads || 100 }));
+  return observe("run-jmeter", args, [args.jmxPath], () => runJmeter({ jmxPath: args.jmxPath, threads: args.threads }));
 }
 
 // ── wls_test_e2e_generate ──────────────────────
@@ -436,11 +438,17 @@ export function listStandardResources() {
 }
 
 export function readStandardResource(uri) {
-  const m = String(uri).match(/^wl-test:\/\/standards\/([^/?#]+\.md)$/);
+  if (typeof uri !== "string") return null;
+  const m = uri.match(/^wl-test:\/\/standards\/([^/?#]+\.md)$/);
   if (!m) return null;
   const file = join(PKG_ROOT, "files", ".github", "standards", m[1]);
   if (!existsSync(file)) return null;
   return readFileSync(file, "utf-8");
+}
+
+/** Only registered tools are callable; inherited Object methods are not tools. */
+export function getToolHandler(name) {
+  return typeof name === "string" && Object.hasOwn(HANDLERS, name) ? HANDLERS[name] : null;
 }
 
 // ── wls_test_e2e_check ─────────────────────────
@@ -484,6 +492,9 @@ export function handleTask(args) {
 }
 
 export const HANDLERS = {
+  wls_test_sit_templates: () => describeSitTemplates(),
+  wls_test_sit_generate: (args) => generateSitDelivery(JSON.parse(readFileSync(args.inputFile, 'utf8')), { outputDir: args.outputDir, evidenceRoot: dirname(resolve(args.inputFile)) }),
+  wls_test_sit_verify: checkSitFile,
   wls_test_task: handleTask,
   wls_test_standards: handleStandards,
   wls_test_contract_read: handleContractRead,

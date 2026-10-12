@@ -43,6 +43,24 @@
         "gap-proposals",
         "host-entry-diagnostics"
       ]
+    },
+    {
+      "id": "testing.sit-delivery",
+      "summary": "SIT原版式Excel/两轮记录/问题/交付校验",
+      "ownership": "test",
+      "inputs": [
+        "sit-delivery-v1",
+        "customer-template-profile"
+      ],
+      "outputs": [
+        "xlsx-deliverables",
+        "plan/report",
+        "record-verification"
+      ],
+      "requiresSiblingPackages": [],
+      "executors": [
+        "sit-verify"
+      ]
     }
   ],
   "standalone": {

@@ -36,5 +36,51 @@
     },
     "authorization": "read-only-business-check",
     "receipt": "package-execution-record-v1"
+  },
+  {
+    "id": "sit-verify",
+    "command": [
+      "sit",
+      "verify"
+    ],
+    "when": {
+      "checks": [
+        "sit-delivery-checks"
+      ]
+    },
+    "parameters": {
+      "type": "object",
+      "required": [
+        "targets",
+        "phase"
+      ],
+      "properties": {
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "pre-sit",
+            "pre-uat"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "sideEffects": {
+      "business": "none",
+      "records": true,
+      "reports": "none"
+    },
+    "authorization": "read-only-business-check",
+    "receipt": "package-execution-record-v1"
   }
 ]

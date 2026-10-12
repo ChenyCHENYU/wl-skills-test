@@ -57,6 +57,7 @@ test("DI MCP: caseCount is publicly declared; empty/zero/missing/invalid inputs 
   assert.equal(descriptor.inputSchema.properties.caseCount.type, "number");
   for (const args of [{}, { defects: [], roundResults: [] }, { defects: [], caseCount: 0, roundResults: [f.summary] }, { defects: [], caseCount: 2 }, { defects: [], caseCount: 3, roundResults: [f.summary] }, { defects: false, caseCount: 2, roundResults: [f.summary] }]) {
     const output = await server.callTool("wls_test_quality_analyze", args);
+    if (args.defects === false) { assert.equal(output.isError, true); assert.match(output.content[0].text, /Schema/); continue; }
     assert.notEqual(JSON.parse(output.content[0].text).releaseDecision, "pass", JSON.stringify(args));
   }
   const output = await server.callTool("wls_test_quality_analyze", { defects: [], caseCount: 2, roundResults: [f.summary] });

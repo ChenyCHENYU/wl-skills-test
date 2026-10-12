@@ -4,12 +4,30 @@
  * 工具数量以 getToolCount() 为准（文档/徽章数字请从代码派生，勿手写）。
  * 注册表与 handlers 的键一致性由 assertRegistryParity 保证（server 启动 + 测试双通道）。
  */
+import Ajv from 'ajv';
 
 export const TOOL_PREFIX = "wls_test";
 
 export const TOOL_DESCRIPTORS = [
   {
+    name: 'wls_test_sit_templates', description: '读取SIT Excel模板目录、版式保留范围与严格输入Schema；不写文件，不代表执行测试',
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'wls_test_sit_generate', description: '在明确指定的新目录生成SIT原版式Excel、方案和报告；不覆盖既有交付物，不代填执行或客户签收',
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    inputSchema: { type: 'object', required: ['inputFile', 'outputDir'], properties: { inputFile: { type: 'string', minLength: 1, pattern: '\\S' }, outputDir: { type: 'string', minLength: 1, pattern: '\\S' } }, additionalProperties: false },
+  },
+  {
+    name: 'wls_test_sit_verify', description: '核验SIT交付记录（带runId时写本包回执），检查提前一周交付、两轮全量执行和问题闭环；hash回执/事实缺失阻断，不声称观察真实业务测试',
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    inputSchema: { type: 'object', required: ['inputFile', 'phase'], properties: { inputFile: { type: 'string', minLength: 1, pattern: '\\S' }, phase: { enum: ['pre-sit', 'pre-uat'] }, root: { type: 'string', minLength: 1, pattern: '\\S' }, runId: { type: 'string', minLength: 1, pattern: '^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$' } }, additionalProperties: false },
+  },
+  {
     name: "wls_test_task",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "task写本包计划；route/explain/status/doctor-host只读" } },
     description: "任务技能路由/约束/缺口与可观测回执：task 仅持久化规划，route/explain/status/doctor-host 只读；安装不能证明宿主加载",
     inputSchema: { type: "object", properties: {
       action: { type: "string", enum: ["task", "route", "explain", "status", "doctor-host"] },
@@ -20,6 +38,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_contract_diff",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "仅output指定时写报告；其余只读分析" } },
     description: "契约变更影响面分析：操作/字段级变更明细 + 受影响用例清单（新增/作废/需重跑），返回紧凑结构化结果",
     inputSchema: {
       type: "object",
@@ -33,6 +53,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_gen_contract",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    _meta: { wl: { sideEffects: "读取本地或URL的OpenAPI；output指定时写契约" } },
     description: "从 OpenAPI/Swagger（URL 或 openapi.json）确定性生成测试契约，返回紧凑结果（操作/字段/核对项），可选写入文件",
     inputSchema: {
       type: "object",
@@ -47,6 +69,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_standards",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "只读本包规范" } },
     description: "查询测试规范（11 条 standards 按编号或名称读取）",
     inputSchema: {
       type: "object",
@@ -57,6 +81,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_contract_read",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "只读明确的契约文件" } },
     description: "读取 kit/bd 机器契约，提取可测试的资源和操作",
     inputSchema: {
       type: "object",
@@ -73,6 +99,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_case_generate",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "只读需求/契约并返回用例，不写文件" } },
     description: "按契约+需求生成测试用例（功能用例+接口用例）",
     inputSchema: {
       type: "object",
@@ -95,6 +123,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_smoke_select",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "只读已有用例并返回选择结果" } },
     description: "从全量用例筛选冒烟测试套件",
     inputSchema: {
       type: "object",
@@ -111,6 +141,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_env_check",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "本地前置条件与命令版本检查；网络未验证" } },
     description: "检查本地测试前置条件（Node/已分发资产/测试命令）；不验证前端、后端或数据库连通性",
     inputSchema: {
       type: "object",
@@ -122,6 +154,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_quality_analyze",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "仅计算调用方提供的DI证据" } },
     description: "DI 统计与执行证据判定；缺分母或实际样本时保持未验证",
     inputSchema: {
       type: "object",
@@ -134,6 +168,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_jmeter_validate",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "只读JMX结构；不运行压测" } },
     description: "校验 JMeter jmx 脚本有效性（XML 结构+线程组+断言）",
     inputSchema: {
       type: "object",
@@ -145,6 +181,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_audit",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "业务源只读；写本包执行回执" } },
     description: "审计测试代码（T1-T25 确定性规则扫描，支持 Playwright/JMeter/用例文档）",
     inputSchema: {
       type: "object",
@@ -156,6 +194,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_fix",
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    _meta: { wl: { sideEffects: "预览只读；confirm=true写授权范围内的修复" } },
     description: "自动修复测试代码反模式（F1-F3：v-deep/beforeEach/waitForTimeout）",
     inputSchema: {
       type: "object",
@@ -167,6 +207,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_run_api",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    _meta: { wl: { sideEffects: "向目标环境发送真实HTTP请求（可含业务写入/清理），写报告和本包回执" } },
     description: "执行深度 API 接口测试（DAG 编排 + 四层断言：成功码/结构/写后读回/负例与安全 + 契约漂移检测 + 零污染清理）",
     inputSchema: {
       type: "object",
@@ -184,6 +226,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_run_playwright",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    _meta: { wl: { sideEffects: "执行调用方测试脚本（可能访问或写目标环境），写本包回执和产物" } },
     description: "执行 Playwright 自动化测试（调用系统已安装的 playwright test）",
     inputSchema: {
       type: "object",
@@ -194,6 +238,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_run_jmeter",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    _meta: { wl: { sideEffects: "执行真实压测，向目标环境请求，写产物和本包回执" } },
     description: "执行 JMeter 性能测试（调用系统已安装的 jmeter -n -t）",
     inputSchema: {
       type: "object",
@@ -206,6 +252,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_e2e_generate",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "写明确outputDir下的测试脚手架；不运行测试" } },
     description: "生成成熟 E2E 工程脚手架（三轮策略：只读冒烟+受控写入+清理账本，含网络监控/写入门禁，源自 wl-ui-produce 实战沉淀）",
     inputSchema: {
       type: "object",
@@ -219,6 +267,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_report_generate",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "聚合真实输入；可写报告/HTML/历史，不代签UAT" } },
     description: "聚合 run-api/run-playwright/run-jmeter/audit/DI 缺陷结果生成测试报告（对齐规范 10 模板，含上线判定）",
     inputSchema: {
       type: "object",
@@ -238,6 +288,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_e2e_check",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "静态读取E2E工程并写本包检查回执；不执行脚本" } },
     description: "E2E 工程强校验：用例归属闭环 / test.only / 写入组安全标记 / Bearer 截断 / 隔离声明漂移 / UI 契约拦截声明（源自 wl-ui-produce 实战约束）",
     inputSchema: {
       type: "object",
@@ -248,6 +300,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_dict_sync",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    _meta: { wl: { sideEffects: "读取目标环境字典接口并写本地dict.json" } },
     description: "同步系统字典到 dict.json（自动识别三种响应形态，支持字段级映射，供数据工厂/负例/round2 消费）",
     inputSchema: {
       type: "object",
@@ -262,6 +316,8 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_gate",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "读取所选证据并写本包回执和报告；不直接运行业务测试" } },
     description: "质量门聚合（一条命令：审计+E2E 强校验+冒烟通过率+DI+性能基线，任一失败即阻断）",
     inputSchema: {
       type: "object",
@@ -319,6 +375,7 @@ export function assertRegistryParity(handlers) {
 export function validateToolInput(name, args) {
   const descriptor = TOOL_DESCRIPTORS.find((t) => t.name === name);
   if (!descriptor) return null;
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return '参数必须是对象';
   const required = descriptor.inputSchema?.required || [];
   const missing = required.filter((k) => args?.[k] === undefined || args?.[k] === null || args?.[k] === "");
   if (missing.length > 0) return `缺少必填参数: ${missing.join(", ")}`;
@@ -332,5 +389,9 @@ export function validateToolInput(name, args) {
       return `参数 ${key} 必须是数值（当前: ${JSON.stringify(v)}）`;
     }
   }
-  return null;
+  const validator = TOOL_VALIDATORS.get(name);
+  return validator(args) ? null : `参数不符合Schema: ${JSON.stringify(validator.errors)}`;
 }
+
+const ajv = new Ajv({ strict: false, allErrors: true });
+const TOOL_VALIDATORS = new Map(TOOL_DESCRIPTORS.map((tool) => [tool.name, ajv.compile(tool.inputSchema)]));

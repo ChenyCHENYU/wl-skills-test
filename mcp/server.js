@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { TOOL_DESCRIPTORS, TOOL_PREFIX, assertRegistryParity, validateToolInput } from "./registry.js";
-import { HANDLERS } from "./tools/handlers.js";
+import { HANDLERS, getToolHandler } from "./tools/handlers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -26,7 +26,7 @@ export function createServer() {
     },
 
     async callTool(name, args) {
-      const handler = HANDLERS[name];
+      const handler = getToolHandler(name);
       if (!handler) {
         return {
           isError: true,
@@ -34,7 +34,7 @@ export function createServer() {
         };
       }
 
-      const invalid = validateToolInput(name, args || {});
+      const invalid = validateToolInput(name, args === undefined ? {} : args);
       if (invalid) {
         return {
           isError: true,
@@ -43,7 +43,7 @@ export function createServer() {
       }
 
       try {
-        const result = await handler(args || {});
+        const result = await handler(args === undefined ? {} : args);
         return {
           content: [
             {

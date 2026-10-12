@@ -14,7 +14,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { TOOL_DESCRIPTORS, assertRegistryParity, validateToolInput } from "./registry.js";
-import { HANDLERS, listStandardResources, readStandardResource } from "./tools/handlers.js";
+import { HANDLERS, getToolHandler, listStandardResources, readStandardResource } from "./tools/handlers.js";
+import requestBoundary from "../lib/json-rpc-request.cjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -40,21 +41,17 @@ rl.on("line", (line) => {
   try {
     req = JSON.parse(line);
   } catch {
+    send({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } });
     return;
   }
 
-  // JSON-RPC 2.0：批量请求（数组）不在本 server 支持范围，明确拒绝而非吐 "Unknown method: undefined"
-  if (Array.isArray(req)) {
-    send({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "批量请求暂不支持，请逐条调用" } });
-    return;
-  }
-
-  const { id, method, params } = req;
+  const validated = requestBoundary.validateRequest(req);
+  if (validated.error) return send(validated.error);
+  if (validated.notification) return;
+  const { id, method, params } = validated.request;
 
   // notification（无 id）不应答——应答会污染客户端的响应匹配
-  const isNotification = id === undefined || id === null;
   const reply = (payload) => {
-    if (isNotification) return;
     send({ jsonrpc: "2.0", id, ...payload });
   };
 
@@ -85,7 +82,11 @@ rl.on("line", (line) => {
       break;
 
     case "resources/read": {
-      const uri = params?.uri || "";
+      const uri = params.uri;
+      if (typeof uri !== "string" || !uri.trim()) {
+        reply({ error: { code: -32602, message: "uri 必须是非空字符串" } });
+        break;
+      }
       const content = readStandardResource(uri);
       if (content === null) {
         reply({ error: { code: -32602, message: `Unknown resource: ${uri}` } });
@@ -107,20 +108,24 @@ rl.on("line", (line) => {
 
     case "tools/call": {
       const { name, arguments: args } = params || {};
-      const handler = HANDLERS[name];
+      if (typeof name !== "string" || !name.trim()) {
+        reply({ error: { code: -32602, message: "name 必须是非空字符串" } });
+        break;
+      }
+      const handler = getToolHandler(name);
       if (!handler) {
         reply({ error: { code: -32601, message: `Unknown tool: ${name}` } });
         break;
       }
       // inputSchema.required 运行时校验：参数缺失是调用方问题（-32602），不是 server 内部错误（-32603）
-      const invalid = validateToolInput(name, args || {});
+      const invalid = validateToolInput(name, args === undefined ? {} : args);
       if (invalid) {
         reply({ error: { code: -32602, message: invalid } });
         break;
       }
       // handler 可能是 async（如 wls_test_run_api），必须 await 后再序列化
       Promise.resolve()
-        .then(() => handler(args || {}))
+        .then(() => handler(args === undefined ? {} : args))
         .then((result) => {
           reply({
             result: {

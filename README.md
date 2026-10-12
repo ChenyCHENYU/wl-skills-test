@@ -4,21 +4,34 @@
 
 <p align="center">
   <strong>测试工程 AI 技能包</strong><br>
-  11 条测试规范 · 13 个 AI Skill · 20 个 MCP 工具 · 契约驱动生成 · 深度 E2E 工程 · 报告聚合 · 性能基线
+  11 条测试规范 · 13 个 AI Skill · 23 个 MCP 工具 · 契约驱动生成 · 深度 E2E 工程 · 报告聚合 · 性能基线
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.33.0-blue.svg" />
+  <img src="https://img.shields.io/badge/version-0.34.0-blue.svg" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green.svg" />
   <img src="https://img.shields.io/badge/standards-11-orange.svg" />
   <img src="https://img.shields.io/badge/skills-13-purple.svg" />
-  <img src="https://img.shields.io/badge/MCP-20-teal.svg" />
+  <img src="https://img.shields.io/badge/MCP-23-teal.svg" />
   <img src="https://img.shields.io/badge/audit-T1--T25-red.svg" />
   <img src="https://img.shields.io/badge/API-%E5%9B%9B%E5%B1%82%E6%96%AD%E8%A8%80-yellow.svg" />
   <img src="https://img.shields.io/badge/tests-340%20pass-brightgreen.svg" />
 </p>
 
 ---
+
+MCP 能力目录带实际参数 Schema、注解和条件副作用：业务只读但写回执的工具不标纯只读。性能执行保留 JMX 线程配置；零/坏采样不通过，基线劣化进入同 runId 回执；旧默认筛查不证明项目 SLA。
+
+## SIT 客户交付与原版式 Excel
+
+新增 `sit templates / generate / verify`，沿用原工作一览四种列宽版式、问题清单和十四列用例模板；提前七日交付、两轮逐用例证据、问题复验和转 UAT 条件由同一引擎核验。空执行记录明确未执行，缺事实或回执阻断，不代签客户验收。模板容量、净化范围、Office 重算与方案/报告 Markdown 附件边界见 [SIT 交付说明](docs/sit-delivery.md)，可从 [事实输入示例](docs/examples/sit-input.json) 开始。
+
+```sh
+wl-skills-test sit generate --input sit.json --output ./SIT-delivery-v1 --json
+wl-skills-test sit verify --input sit.json --phase pre-uat --json
+```
+
+该能力独立属于 Test；公开 `sit-verify` 执行器与三个 SIT MCP 工具复用原 CLI/回执，Harness 不复制规则。CLI 命令帮助和协议 inventory 现在来自同一目录。
 
 ## 如何确认本包正在起作用
 
@@ -189,15 +202,15 @@ API 文档 ──→ ⑩性能方案 ──→ ⑪JMeter 脚本 ──→ ⑫性
 | # | 规范 | 核心约束 |
 |---|------|---------|
 | 01 | 测试流程 | 需求评审→测试点→工作量→用例→评审→冒烟→执行→封版→上线 |
-| 02 | 用例设计 | P0~P3 四级，1天50条，每功能点≥10条 |
+| 02 | 用例设计 | P0~P3及需求追溯；数量按真实覆盖，不套固定配额 |
 | 03 | 设计方法 | 场景法/边界值/等价类/错误推测/状态迁移 |
 | 04 | 测试策略 | 功能+系统+探索性，5 维度（功能/界面/权限/数据/兼容） |
 | 05 | 冒烟测试 | 转测门槛 95%，套件 ≤8/15/25 |
 | 06 | 自动化 | Playwright + Element Plus，两阶段（数据闭环+全按钮覆盖） |
-| 07 | 性能测试 | JMeter 5.6.3，三场景，P99<500ms，11 条 XML 强制规则 |
+| 07 | 性能测试 | JMeter兼容结构与实际工具验证；负载/SLA来自项目事实，缺少标gap |
 | 08 | 质量门禁 | DI=致命×10+严重×3+一般×1+轻微×0.1，密度<0.3 |
 | 09 | 缺陷管理 | 录入规范、分级、回归规则 |
-| 10 | 测试报告 | 报告模板、上线验证 ≤1.5h |
+| 10 | 测试报告 | 用户Office模板优先；真实结果/批准与生成分立，验证窗口由项目确认 |
 | 11 | 数据安全 | 脱敏、不碰生产、AT_ 前缀 |
 
 ---
@@ -223,7 +236,7 @@ npx @agile-team/wl-skills-test run-gen --contract ./wl-contract.json --type jmet
 | bd | `wl-contract.json` | 5 标准操作 + customOperations + 必填 |
 | kit | `page-spec.json` | 页面 CRUD 推断 + Playwright 选择器 |
 
-> **生成即合规**：所有生成物均通过自家 T1-T20 审计（含 CSV 参数化、SLA 断言、`__P` 属性化线程参数），由 `test/self-consistency.test.js` 回归保证。
+> **生成后仍须复验**：`test/self-consistency.test.js` 验证已覆盖样例的生成/静态审计一致性；不能证明任意项目产物已执行、业务通过或人工批准。项目事实、模板版式、真实样本与未验证项分别核对。
 
 ---
 
@@ -370,7 +383,7 @@ e2e/
 
 ---
 
-## 🔧 20 个 MCP 工具
+## 🔧 23 个 MCP 工具
 
 | 工具 | 用途 |
 |------|------|
@@ -382,6 +395,9 @@ e2e/
 | `wls_test_case_generate` | 按契约+需求生成测试用例 |
 | `wls_test_smoke_select` | 从全量用例筛选冒烟套件 |
 | `wls_test_env_check` | 本地测试前置条件；网络连通性保持未验证 |
+| `wls_test_sit_templates` | SIT模板目录、完整输入Schema和版式保留说明 |
+| `wls_test_sit_generate` | 新目录生成SIT原版式Excel及方案/报告附件 |
+| `wls_test_sit_verify` | SIT提前交付、两轮全量和问题闭环校验，可关联runId |
 | `wls_test_quality_analyze` | DI 缺陷指数质量评估 + 上线判定 |
 | `wls_test_jmeter_validate` | 校验 JMeter jmx 有效性 |
 | `wls_test_audit` | 审计测试代码（T1-T25 确定性规则） |
@@ -497,7 +513,7 @@ wl-skills-test/
 |------|:----:|------|
 | 测试规范 | 11 | 对齐在线 QC 流程规范（另以 MCP resources 只读暴露） |
 | AI Skill | 13 | 功能链 9 + 性能链 3 + 接入引导 1 |
-| MCP 工具 | 20 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
+| MCP 工具 | 23 | wls_test_* 前缀，全部实现并有测试（含 stdio round-trip + resources） |
 | 审计规则 | 25 | T1-T25 确定性扫描器（T3/T4 块级精确解析 + T21-T25 E2E 工程约束） |
 | 自动修复 | 6 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码/afterEach/测试名） |
 | 执行器 | 3 | run-api（HTTP）/ run-playwright / run-jmeter + jtl 解析 |
@@ -534,12 +550,12 @@ wl-skills-test/
 | | JMeter 执行 | ✅ | 完整 | run-jmeter 调用 `jmeter -n -t` + 解析 jtl（P50/P95/P99/错误率） |
 | **审计** | 测试代码规范审计 | ✅ | 完整 | T1-T20 确定性扫描器（Playwright/JMeter/用例，跳过 node_modules，容错单文件） |
 | | 测试脚本质量检查 | ✅ | 完整 | T6-T18 覆盖 JMeter 全 11 条 XML 强制规则 |
-| | 用例覆盖率校验 | ✅ | 完整 | T19（数量 < 10 条/功能点）+ T20（异常场景缺失） |
+| | 用例覆盖率校验 | ✅ | 完整 | T19（项目显式数量下限，无默认配额）+ T20（异常场景缺失） |
 | **修复** | 测试代码自动修复 | ✅ | 完整 | F1-F6（v-deep/beforeEach/waitForTimeout/硬编码URL/afterEach/测试名） |
 | | 脚本反模式修复 | ✅ | 完整 | T2 硬编码检测 + T12 硬等待替换 + F4-F6 |
 | **质量门** | DI 缺陷指数卡门 | ✅ | 完整 | quality-gate.js 4 指标全部实现 + CI 集成 |
 | | 冒烟通过率卡门 | ✅ | 完整 | quality-gate --smoke-result 支持 |
-| | 测试覆盖率卡门 | ✅ | 完整 | audit T19/T20 + quality-gate --audit-dir |
+| | 测试覆盖检查 | ✅ | 有边界 | T19仅显式数量约定、T20文本异常场景提示；SIT逐需求追溯，均不等于测得代码覆盖率 |
 | | 测试代码审计卡门 | ✅ | 完整 | quality-gate --audit-dir CI 阻断 |
 | **报告** | 质量报告生成 | ✅ | 完整 | DI 报告 + 质量报告模板 |
 | | 测试报告生成 | ✅ | 完整 | run-api 自动产出 md+json 报告（json 供质量门消费） |
@@ -556,7 +572,7 @@ wl-skills-test/
 | 规范审计引擎 | R1-R16 (AST) | B1-B29 | R001-R039 (39条) | **T1-T20** | ✅ 已补齐 |
 | 自动修复 | safe-fix (F1-F5) | code-fix-be (B3/B5) | fix (12条) | **F1-F6** | ✅ 已补齐 |
 | 质量门对象 | 源码本身 | 源码本身 | 源码本身 | **外部 DI + 内部审计** | ✅ 已增强 |
-| MCP 工具数 | 23 | 16 | 10 | **20** | 🟡 可继续扩展 |
+| MCP 工具数 | 23 | 16 | 10 | **23** | 🟡 可继续扩展 |
 | 确定性 vs AI 驱动 | 确定性 | 确定性 | 确定性 | **确定性+AI** | ✅ 已补齐 |
 | 执行能力 | ❌ | ❌ | ❌ | **API/UI/性能执行 ✅** | ✅ 领先 |
 
@@ -575,7 +591,7 @@ wl-skills-test/
 | ~~9~~ | ~~自动修复 F4-F6~~ | ~~🟢 中~~ | ~~P2~~ | ✅ v0.5.0 硬编码/afterEach/测试名 |
 | ~~10~~ | ~~审计接入 CI 卡门~~ | ~~🟡 高~~ | ~~P1~~ | ✅ v0.5.0 quality-gate --audit-dir |
 
-> **全部缺口已清零**。v0.5.0 实现了完整的工程能力闭环：规范审计（T1-T20）→ 自动修复（F1-F6）→ 执行（API/Playwright/JMeter）→ 质量门（4 指标 + 审计卡门）→ 报告。
+> **历史 v0.5.0 工程能力建设记录（不表示未来场景无缺口）**。v0.5.0 实现了完整的工程能力闭环：规范审计（T1-T20）→ 自动修复（F1-F6）→ 执行（API/Playwright/JMeter）→ 质量门（4 指标 + 审计卡门）→ 报告。
 
 ---
 
@@ -651,3 +667,5 @@ Copyright © 2026 AGILE TEAM · All Rights Reserved
 维护边界、结构化执行和防漂移验收：[维护契约](docs/maintenance-contract.md)。
 
 1.0 评估与稳定公开面准入：[版本成熟度](docs/release-maturity.md)。
+
+MCP 请求入口使用共享 JSON-RPC 边界校验：非法请求/参数返回明确错误并继续服务，仅注册工具可调用；通知不应答，`id:null` 请求保留原 id。

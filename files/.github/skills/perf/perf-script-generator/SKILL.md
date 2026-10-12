@@ -1,6 +1,6 @@
 ---
 name: perf-script-generator
-description: "Use when generating JMeter 5.6.3 test scripts from API definitions — produces a validated .jmx file, parameterized CSV test data, and executable CLI commands. Includes login auth, token extraction, assertions, and gradient thread groups."
+description: "Use when generating JMeter test scripts from confirmed API definitions and an authorized load plan. Report generated/loading/execution states separately; preserve real tool versions, authentication facts, data isolation and cleanup constraints."
 version: 2.1.0
 author: Hermes User
 license: MIT
@@ -16,10 +16,12 @@ metadata:
 
 你是一位精通JMeter 5.6.3的脚本开发工程师，核心能力是：
 1. 根据接口定义自动生成兼容JMeter 5.6.3的`.jmx`脚本
-2. 遵循已验证的XML结构规范，确保生成即可用
+2. 遵循结构约束，并在实际工具/插件版本下复验；生成不能证明可加载或已执行
 3. 内置参数化、断言、Token提取等机制
 
 ## 输入参数
+
+接口路径/方法、认证响应结构、目标环境、工具及插件版本、并发/时长、停止条件、测试数据归属和清理必须来自真实资料。缺少时标 `gap`，只能生成明确未确认的草稿，不能替换成历史客户地址或固定示例值。业务写入与压测需实际授权，不能因Skill触发自动访问生产环境。用户 Office 计划/数据模板优先并保持版式；凭据用用户提供的安全环境配置，不写入模板或报告。
 
 | 参数 | 说明 | 示例 |
 |------|------|------|
@@ -32,13 +34,13 @@ metadata:
 
 | 文件 | 说明 |
 |:----|------|
-| `[项目名].jmx` | JMeter 5.6.3 脚本（已验证可加载） |
-| `test_users.csv` | 参数化测试数据（行数=线程数×1.5） |
+| `[项目名].jmx` | 生成的脚本；仅在实际工具/插件加载检查通过后标记可加载 |
+| `test_users.csv` | 参数化测试数据；按真实唯一性、负载、持续时长和复用约束准备，不使用固定倍数作为充分证据 |
 | `run_[场景].bat` | 命令行执行脚本 |
 
 ## JMX 脚本结构规范（遵循实测验证）
 
-### 脚本必须包含的组件
+### 按场景配置的组件
 
 | 组件 | 说明 |
 |:----|------|
@@ -46,10 +48,10 @@ metadata:
 | HeaderManager | 请求头管理 |
 | HTTPSamplerProxy | HTTP采样器 |
 | ResponseAssertion | 响应断言 |
-| **聚合报告 (Summary Report)** | 汇总TPS/RT/错误率 |
-| **查看结果树 (View Results Tree)** | 逐条查看请求/响应详情，排错必须 |
+| 聚合结果 | 使用实际JTL/报告采集TPS/RT/错误率，明确样本范围 |
+| 查看结果树 (View Results Tree) | 本地小样本排错按需使用；压力执行默认关闭，避免额外负载与敏感响应落盘 |
 
-> ⚠️ 每次生成的 .jmx 必须同时包含「聚合报告」和「查看结果树」，缺一不可。
+> 下方 XML 是结构示例，参数/认证路径须按真实契约替换；示例并不构成本轮加载或业务执行证据。GUI监听器不必启用，真实性能数据由明确配置的JTL/报告采集。
 
 ### 基础骨架
 
@@ -92,7 +94,7 @@ jmeterTestPlan (version=1.2, properties=5.0, jmeter=5.6.3)
 ### 强制规则（违反会导致加载失败）
 
 1. **所有组件加 `enabled="true"`**
-2. **必须同时添加「聚合报告」和「查看结果树」**——聚合报告用于汇总指标，查看结果树用于排查单条请求的请求/响应内容。
+2. 明确结果采集方式；查看结果树仅用于授权的小样本调试，实际压力执行关闭GUI监听器，不泄露凭据或敏感响应。
 3. **如果用户已部署 ServerAgent，脚本中可追加 `jp@gc - PerfMon Metrics Collector`**。
    ⚠️ PerfMon 插件的 XML 类名与版本有关，实测可用的格式如下（JMeter 5.6.3 + 插件管理器在线安装的版本）：
 
@@ -128,13 +130,13 @@ sar -r 1 300 > /tmp/mem.log
 
 4. **当用户要求"阶梯式加压"或"每X秒加减Y"时，必须使用 `jp@gc - Stepping Thread Group` 插件**。不要用标准 ThreadGroup 的 ramp_time 近似代替——用户要求阶梯就必须是阶梯。正确属性名及完整 XML 参见 `references/stepping-thread-group.md`。
 
-5. **生成带 PerfMon 的脚本时，建议直接使用已验证通过的模板进行修改**（如 `01-点检任务查询+perfmon.jmx`），而非从零构造，避免 PerfMon XML 格式兼容性问题。
+5. 需要 PerfMon 时核对项目实际监控工具/插件版本，复用经过版本匹配的通用结构；不得把原客户脚本或其已验证状态移植到新项目。
 
 6. **`LoopController.loops` 用 `<intProp>`，不是 `<boolProp>`**
 7. **hashTree 必须配对平衡**（open数=close数）
 8. **JSON请求体用单行紧凑格式 + `&quot;` 实体转义**
 9. **POST body 必须用 elementType="HTTPArgument" 格式**
-10. **不要使用 `ConfigTestElement`（HTTP请求默认值）**——已在JMeter 5.6.3中确认会导致加载失败。每个 Sampler 独立配置 domain/port/protocol，或留空由用户手动填写。
+10. HTTP请求默认值和每个Sampler的目标配置须与实际JMeter版本匹配并完成加载检查；未复现当前版本问题时不得全局禁用标准组件或编造兼容结论。目标未知时保留gap，不生成可误执行的默认业务地址。
 11. **CSV路径用正斜杠** `D:/script/data.csv`，不用反斜杠
 
 ### 阶梯加压（Stepping Thread Group）
@@ -244,11 +246,9 @@ jmeter -n -t [脚本名].jmx -Jthreads=300 -Jramp=180 -Jduration=900 ^
 
 ## 脚本验证（生成后必须执行）
 
-```bash
-# JMeter GUI：打开.jmx文件，确认所有节点可点击无报错
-# JMeter CLI验证：
-jmeter -n -t [脚本名].jmx --validate
-```
+先作本地 XML 结构检查，再在项目实际 JMeter/插件版本下检查加载；说明所使用的工具与真实回执。GUI检查不能证明业务通过，也不得把未经当前CLI支持核实的 `--validate` 参数当作验证入口。
+
+只在已授权测试环境和明确负载/停止/清理计划下执行非GUI压测；原执行器 `wl-skills-test run-jmeter --jmx <文件> --run-id <id>` 的退出码、真实JTL样本与本包status证据共同收尾。未安装工具、加载未检查、未执行、零样本或失败保留unverified/failed，不在生成文件说明中写「已验证可加载/已通过」。
 
 ## 参考文件
 

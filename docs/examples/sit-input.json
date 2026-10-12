@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "templateVariant": "worklist",
+  "project": { "name": "SIT示例项目（请替换真实事实）" },
+  "schedule": { "sitStart": "2026-11-10", "uatStart": "2026-12-01" },
+  "requirements": [{ "id": "EXAMPLE-REQ-1", "description": "示例：查询授权范围内的记录", "source": "示例，待替换真实评审需求" }],
+  "cases": [{ "id": "EXAMPLE-CASE-1", "name": "示例列表查询", "kind": "functional", "priority": "P1", "module": "示例模组", "preconditions": "测试环境已登录且存在测试数据", "steps": "打开实际菜单，按已声明的筛选条件查询", "expected": "返回当前账号授权范围内的记录", "requirementIds": ["EXAMPLE-REQ-1"] }],
+  "rounds": [],
+  "defects": [],
+  "deliveries": {}
+}
