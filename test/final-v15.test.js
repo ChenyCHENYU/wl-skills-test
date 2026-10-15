@@ -69,38 +69,27 @@ test("v15: 计划含重复目标直接拒绝", () => {
 });
 
 // ── 文档口径单一事实源 ──
-test("v15: README 徽章/口径与代码一致（工具数/测试数/版本）", async () => {
+test("v15: README 提供系列标识、动态版本与真实接入和核验入口", () => {
   const readme = readFileSync(join(PKG_ROOT, "README.md"), "utf-8");
   const pkg = JSON.parse(readFileSync(join(PKG_ROOT, "package.json"), "utf-8"));
 
-  // MCP 工具数从注册表派生
-  const toolCount = getToolCount();
-  assert.ok(readme.includes(`MCP-${toolCount}-teal`), `README MCP 徽章应为 ${toolCount}`);
-  assert.ok(!/1[45] 个 MCP 工具/.test(readme), "正文不得残留过时工具数（14/15）");
-  // parity（与 stdio 启动同一防线）
+  assert.ok(readme.includes("<picture>"));
+  assert.ok(readme.includes("prefers-color-scheme: dark"));
+  for (const logo of ["wl-test-logo.svg", "wl-test-logo-dark.svg"]) {
+    assert.ok(readme.includes(`/wl-skills-test/main/assets/${logo}`), `缺少系列 Logo：${logo}`);
+  }
+  assert.ok(readme.includes(`https://img.shields.io/npm/v/${pkg.name}`), "版本徽章应动态读取 npm");
+  assert.ok(readme.includes(`https://www.npmjs.com/package/${pkg.name}`));
+  assert.ok(!/tests-\d+%20pass|version-\d+\.\d+\.\d+-blue/.test(readme), "主 README 不固化测试数量或版本记录");
+  for (const command of ["init", "validate --json", "audit --target", "status --run-id", "report --run-id"]) {
+    assert.ok(readme.includes(`wl-skills-test ${command}`), `缺少真实操作入口：${command}`);
+  }
+  for (const doc of ["docs/quality-evidence.md", "docs/sit-delivery.md", "docs/project-scope.md", "docs/maintenance-contract.md"]) {
+    assert.ok(readme.includes(`](${doc})`), `缺少深度手册入口：${doc}`);
+    assert.ok(existsSync(join(PKG_ROOT, doc)), `手册路径不存在：${doc}`);
+  }
+  assert.equal(getToolCount(), TOOL_DESCRIPTORS.length);
   assert.equal(TOOL_DESCRIPTORS.length, Object.keys(HANDLERS).length);
-  // 版本徽章 = package.json
-  assert.ok(readme.includes(`version-${pkg.version}-blue`), `README 版本徽章应为 ${pkg.version}`);
-  // 测试徽章与实际测试数一致（统计 test/ 下 test( 出现次数近似；至少不得低于徽章）
-  const testDir = join(PKG_ROOT, "test");
-  const { readdirSync } = await import("node:fs");
-  let testCount = 0;
-  for (const f of readdirSync(testDir)) {
-    if (!f.endsWith(".test.js")) continue;
-    testCount += (readFileSync(join(testDir, f), "utf-8").match(/^\s*test\(/gm) || []).length;
-  }
-  // The router registers one real test per released skill on the same for() line.
-  const routingTest = readFileSync(join(testDir, "task-observability.test.js"), "utf-8");
-  if (routingTest.includes("for (const skill of readRoutes().skills) test(")) {
-    testCount += JSON.parse(readFileSync(join(PKG_ROOT, "files/.wl-skills-test/routes.v1.json"), "utf-8")).skills.length;
-  }
-  const badgeMatch = readme.match(/tests-(\d+)%20pass/);
-  assert.ok(badgeMatch, "README 应有 tests 徽章");
-  // 徽章不得高于实际 test() 定义数（防虚标）；精确总数以 node --test 运行结果为准
-  assert.ok(parseInt(badgeMatch[1], 10) <= testCount, `README 测试徽章 ${badgeMatch[1]} 不得高于实际 test() 数 ${testCount}`);
-  // 结构章节反映 v0.12 拆分
-  assert.ok(readme.includes("cli/"), "包结构应包含 lib/cli/");
-  assert.ok(readme.includes("shared/"), "包结构应包含 lib/shared/");
 });
 
 test("v15: quality-gate.js DI 检查与 calculateDI 同口径（模块收敛在位）", async () => {
