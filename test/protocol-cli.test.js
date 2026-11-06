@@ -12,7 +12,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
-const { protocol, runOperation } = require('../lib/cli/commands/protocol.js');
+const { protocol, runOperation, buildInventory } = require('../lib/cli/commands/protocol.js');
 const pkg = require('../package.json');
 const BIN = path.join(here, '..', 'bin', 'wl-skills-test.js');
 
@@ -29,6 +29,37 @@ test('describe 返回协议版本、能力目录与六个统一操作', () => {
   assert.ok(Array.isArray(described.capabilities) && described.capabilities.length > 0);
   assert.deepEqual(described.operations.map((operation) => operation.id), ['route', 'explain', 'task', 'status', 'doctor-host', 'execute']);
   assert.ok(described.errorCodes.includes('internal-error'));
+});
+
+test('13个技能说明与真实SKILL frontmatter逐字一致，CLI describe不再投影空值', () => {
+  const root = path.resolve(here, '..');
+  const routes = JSON.parse(fs.readFileSync(path.join(root, 'files/.wl-skills-test/routes.v1.json'), 'utf8'));
+  const skills = protocol.describe().inventory.skills;
+  assert.equal(skills.length, 13); assert.equal(routes.skills.length, 13);
+  for (const entry of routes.skills) {
+    const source = fs.readFileSync(path.join(root, 'files', entry.path), 'utf8');
+    const frontmatter = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
+    const rawDescription = frontmatter?.match(/^description:\s*(".*")\s*$/m)?.[1];
+    assert.ok(rawDescription, `${entry.id}: canonical description must be a quoted JSON string`);
+    const description = JSON.parse(rawDescription);
+    assert.ok(description.length > 40, entry.id);
+    assert.equal(entry.description, description, `${entry.id}: route metadata drifted from canonical Skill`);
+    const actual = skills.find(skill => skill.id === entry.id);
+    assert.equal(actual.description, description); assert.equal(actual.entry, entry.path);
+    assert.deepEqual(actual.triggers, entry.phrases);
+  }
+  const described = spawnSync(process.execPath, [BIN, 'protocol', 'describe'], { encoding: 'utf8' });
+  assert.equal(described.status, 0, described.stderr);
+  assert.deepEqual(JSON.parse(described.stdout).inventory.skills, skills);
+});
+
+test('技能目录缺少说明时明确记录加载错误，不输出空说明或占位能力', () => {
+  for (const description of [undefined, '', '   ', null]) {
+    const inventory = buildInventory({ skills: [{ id: 'missing-description', path: 'SKILL.md', phrases: ['x'], description }] });
+    assert.deepEqual(inventory.skills, []);
+    assert.equal(inventory.loadErrors.length, 1); assert.match(inventory.loadErrors[0], /missing-description.*缺少真实技能说明/);
+    assert.ok(inventory.mcpTools.length > 0, 'unrelated real MCP inventory remains available');
+  }
 });
 
 test('route 只读判定返回六类状态之一且不落 run 记录', () => {
@@ -133,4 +164,27 @@ test('targets 空数组与 Schema 一致（运行时接受空范围）', () => {
   assert.equal(envelope.ok, true);
   const described = protocol.describe();
   assert.equal(described.schemas.request.properties.targets.minItems, undefined, 'Schema 不得要求非空 targets');
+});
+
+
+test("公开inventory的全部13个Skill声明当前包绝对resourcePath，不读取调用项目override", t => {
+  const packageRoot = fs.realpathSync(path.resolve(here, ".."));
+  const described = protocol.describe();
+  const skills = described.inventory.skills;
+  assert.deepEqual(described.inventory.loadErrors, []);
+  assert.equal(skills.length, 13);
+  for (const skill of skills) {
+    assert.ok(path.isAbsolute(skill.resourcePath), skill.id);
+    assert.ok(fs.realpathSync(skill.resourcePath).startsWith(packageRoot + path.sep), skill.id);
+    assert.ok(fs.statSync(skill.resourcePath).isFile(), skill.id);
+    assert.equal(skill.resourceId, skill.entry, "logical entry remains a stable resource identifier");
+  }
+  const caller = fs.mkdtempSync(path.join(tmpdir(), "wl-public-inventory-caller-"));
+  t.after(() => fs.rmSync(caller, { recursive: true, force: true }));
+  const override = path.join(caller, skills[0].entry);
+  fs.mkdirSync(path.dirname(override), { recursive: true });
+  fs.writeFileSync(override, "# Caller override must not replace package-owned public inventory\n");
+  const cli = spawnSync(process.execPath, [BIN, "protocol", "describe", "--json"], { cwd: caller, encoding: "utf8" });
+  assert.equal(cli.status, 0, cli.stderr);
+  assert.deepEqual(JSON.parse(cli.stdout).inventory.skills, skills);
 });

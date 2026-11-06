@@ -58,10 +58,10 @@ test("DI MCP: caseCount is publicly declared; empty/zero/missing/invalid inputs 
   for (const args of [{}, { defects: [], roundResults: [] }, { defects: [], caseCount: 0, roundResults: [f.summary] }, { defects: [], caseCount: 2 }, { defects: [], caseCount: 3, roundResults: [f.summary] }, { defects: false, caseCount: 2, roundResults: [f.summary] }]) {
     const output = await server.callTool("wls_test_quality_analyze", args);
     if (args.defects === false) { assert.equal(output.isError, true); assert.match(output.content[0].text, /Schema/); continue; }
-    assert.notEqual(JSON.parse(output.content[0].text).releaseDecision, "pass", JSON.stringify(args));
+    assert.notEqual(output.structuredContent.releaseDecision, "pass", JSON.stringify(args));
   }
   const output = await server.callTool("wls_test_quality_analyze", { defects: [], caseCount: 2, roundResults: [f.summary] });
-  assert.equal(JSON.parse(output.content[0].text).releaseDecision, "pass");
+  assert.equal(output.structuredContent.releaseDecision, "pass");
   assert.equal((await server.callTool("wls_test_quality_analyze", { caseCount: "2" })).isError, true);
 });
 
@@ -78,7 +78,7 @@ test("DI gate: lib/MCP/original CLI/CI use actual rounds and preserve nonzero on
     assert.equal(run.status, 1, run.stdout); assert.ok(!run.stdout.includes("允许上线"));
   }
   const cli = f.cli(["gate", "--defects", f.defects, "--cases", "2", "--round-results", f.rounds, "--reports-dir", f.reports]);
-  assert.equal(cli.status, 0, cli.stderr); assert.ok(cli.stdout.includes("允许上线"));
+  assert.equal(cli.status, 0, cli.stderr); assert.match(cli.stdout, /所选检查全部通过/); assert.doesNotMatch(cli.stdout, /允许上线/);
   for (const cases of [undefined, "0", "2", "3"]) {
     const args = cases === undefined ? [] : ["--cases", cases];
     if (cases === "2" || cases === "3") args.push("--round-results", f.rounds);
@@ -105,11 +105,13 @@ test("confirmed fix skips external file/directory links and loops, rejects expli
   const content = 'await page.waitForTimeout(5000);\n'; fs.writeFileSync(path.join(outside, "external.js"), content);
   fs.writeFileSync(path.join(target, "local.js"), content);
   fs.symlinkSync(outside, path.join(target, "linked")); fs.symlinkSync(path.join(outside, "external.js"), path.join(target, "external.js")); fs.symlinkSync(target, path.join(target, "loop"));
-  const server = createServer(); const fixed = await server.callTool("wls_test_fix", { root: f.root, target, confirm: true });
-  const result = JSON.parse(fixed.content[0].text); assert.equal(result.coverageStatus, "partial"); assert.equal(result.skippedEntries.length, 3); assert.equal(result.validationStatus, "unverified");
+  const server = createServer({ projectRoot: f.root });
+  const preview = await server.callTool("wls_test_fix", { root: f.root, target });
+  const fixed = await server.callTool("wls_test_fix", { root: f.root, target, confirm: true, planHash: preview.structuredContent.planHash });
+  const result = fixed.structuredContent; assert.equal(result.coverageStatus, "partial"); assert.equal(result.skippedEntries.length, 3); assert.equal(result.validationStatus, "unverified");
   assert.equal(fs.readFileSync(path.join(outside, "external.js"), "utf8"), content);
-  const escaped = await server.callTool("wls_test_fix", { root: f.root, target: path.join(target, "linked"), confirm: true });
-  assert.equal(JSON.parse(escaped.content[0].text).errorCode, "fix-target-outside-project");
+  const escaped = await server.callTool("wls_test_fix", { root: f.root, target: path.join(target, "linked") });
+  assert.equal(escaped.structuredContent.errorCode, "fix-target-outside-project");
   const cli = f.cli(["fix", "--target", target]); assert.equal(cli.status, 1); assert.ok(cli.stderr.includes("partial"));
   const invalid = f.cli(["fix", "--target", path.join(target, "linked")]); assert.equal(invalid.status, 1); assert.ok(invalid.stderr.includes("fix-target-outside-project"));
   assert.equal(fs.readFileSync(path.join(outside, "external.js"), "utf8"), content);

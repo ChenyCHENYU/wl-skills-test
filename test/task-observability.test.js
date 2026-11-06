@@ -32,7 +32,7 @@ for (const skill of readRoutes().skills) test(`route: real manifest selects ${sk
   const result = routeTask(skill.phrases[0], { installed: false });
   assert.equal(result.status, 'matched');
   assert.deepEqual(result.selectedSkills, [skill.id]);
-  assert.ok(result.requiredFiles.includes(skill.path));
+  assert.ok(result.resourceIds.includes(skill.path));
   assert.ok(result.constraints.length > 0);
 });
 
@@ -61,7 +61,8 @@ test('route: baseline, unsupported capability and unresolved context remain dist
 test('task: missing standard persists a scoped gap and suggestion, without executions', () => {
   const f = fixture();
   try {
-    fs.unlinkSync(path.join(f.root, '.github/standards/02-case-design.md'));
+    fs.mkdirSync(path.join(f.root, '.github/standards'), { recursive: true });
+    fs.writeFileSync(path.join(f.root, '.github/standards/02-case-design.md'), 'invalid local override');
     const plan = planTask({ task: '生成测试用例', root: f.root });
     assert.equal(plan.decision.status, 'gap');
     assert.ok(plan.decision.gaps[0].paths.includes('.github/standards/02-case-design.md'));
@@ -78,7 +79,7 @@ test('validate: empty and missing-owned installations fail; a complete installat
     assert.equal(cli(f.root, ['validate', '--json']).status, 1);
     applyInstallPlan(createInstallPlan(f.root, { filesDir: path.join(PKG_ROOT, 'files'), version: PKG.version }));
     assert.equal(cli(f.root, ['validate', '--json']).status, 0);
-    fs.unlinkSync(path.join(f.root, '.github/skills/onboarding/test-onboarding/SKILL.md'));
+    fs.unlinkSync(path.join(f.root, '.agents/skills/wl-skills-test/SKILL.md'));
     assert.equal(cli(f.root, ['validate', '--json']).status, 1);
   } finally { f.dispose(); }
 });
@@ -104,7 +105,7 @@ test('CLI/MCP: read-only route does not persist; task/status share a run and sta
   try {
     const readOnly = cli(f.root, ['route', '接入测试', '--json']);
     assert.equal(readOnly.status, 0); assert.equal(JSON.parse(readOnly.stdout).status, 'matched');
-    assert.equal(fs.existsSync(path.join(f.root, '.wl-skills-test/runs')), false);
+    assert.equal(fs.existsSync(path.join(f.root, '.wl-skills/state/test/runs')), false);
     const started = cli(f.root, ['task', '接入测试', '--run-id', 'task-shared', '--json']);
     assert.equal(started.status, 0); assert.equal(JSON.parse(started.stdout).runId, 'task-shared');
     const result = HANDLERS.wls_test_task({ action: 'status', root: f.root, runId: 'task-shared' });
@@ -112,6 +113,15 @@ test('CLI/MCP: read-only route does not persist; task/status share a run and sta
     const host = JSON.parse(cli(f.root, ['doctor-host', '--json']).stdout);
     assert.equal(host.contentLoaded, 'unverified'); assert.equal(host.details.connection, 'unknown');
     assert.equal(inspectHost(f.root).hostContextLoaded, 'unknown');
+    const diagnose = () => cli(f.root, ['doctor-host', '--host', 'codex', '--json']);
+    assert.equal(JSON.parse(diagnose().stdout).details.readiness, 'discoverable-files-present');
+    fs.appendFileSync(path.join(f.root, '.agents/skills/wl-skills-test/SKILL.md'), '\nUser edited the installed gateway.\n');
+    const modified = diagnose();
+    assert.equal(modified.status, 1);
+    const report = JSON.parse(modified.stdout);
+    assert.equal(report.entryReadiness, 'incomplete');
+    assert.equal(report.details.readiness, 'gap');
+    assert.equal(report.details.gateway.status, 'modified');
   } finally { f.dispose(); }
 });
 test('receipts: a checker completes with failed validation; zero checks cannot pass; thrown errors are recorded', async () => {
@@ -210,7 +220,7 @@ test('native gateway is concise with valid quoted frontmatter and project-relati
   const body = fs.readFileSync(path.join(PKG_ROOT, 'files/.agents/skills/wl-skills-test/SKILL.md'), 'utf8');
   assert.match(body, /^---\nname: wl-skills-test\ndescription: "/);
   const description = JSON.parse(body.split('\n')[2].slice('description: '.length));
-  assert.ok(description.includes('For ordinary code changes'));
+  assert.ok(description.includes('普通代码变更'));
   assert.ok(Buffer.byteLength(body) < 4096);
-  assert.ok(body.includes('.github/skills/') && body.includes('.github/standards/'));
+  assert.ok(body.includes('exact physical paths'));
 });

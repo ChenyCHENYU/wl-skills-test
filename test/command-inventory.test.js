@@ -6,7 +6,7 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { COMMANDS, COMMAND_CATALOG } from '../lib/cli/catalog.js';
-import { TOOL_DESCRIPTORS } from '../mcp/registry.js';
+import { HOST_TOOL_DESCRIPTORS as TOOL_DESCRIPTORS } from '../mcp/registry.js';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bin = path.join(packageRoot, 'bin/wl-skills-test.js');

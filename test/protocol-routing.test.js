@@ -33,10 +33,10 @@ before(() => {
 });
 
 for (const item of cases) {
-  const expectedBare = item.skill ? 'gap' : item.status;
+  const expectedBare = item.installedStatus || (item.skill ? 'matched' : item.status);
   const expectedInstalled = item.installedStatus || (item.skill ? 'matched' : item.status);
 
-  test(`已声明接入但未初始化：「${item.task}」→ ${expectedBare}${item.skill ? ` + ${item.skill}` : ''}`, () => {
+  test(`已声明接入，包内资源可用：「${item.task}」→ ${expectedBare}${item.skill ? ` + ${item.skill}` : ''}`, () => {
     const envelope = routeAt(tempRoot(), item.task);
     assert.equal(envelope.ok, true);
     const decision = envelope.result.decision || envelope.result;

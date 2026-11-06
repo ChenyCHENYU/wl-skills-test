@@ -1,6 +1,6 @@
 ---
 name: universal-test-rules
-description: "Use when executing automated tests across all modules. Defines universal standards for test flow, assertions, exception handling, page-level closed-loop testing, data lifecycle, and output formatting. Base rules referenced by all module-specific test scripts."
+description: "Use when applying automated testing standards or statically auditing existing test code for weak, missing, or always-true assertions. Covers test flow, assertions, exception handling, page-level behavior, data lifecycle, and reporting."
 version: 2.1.0
 author: Hermes User
 license: MIT
@@ -15,6 +15,12 @@ metadata:
 你是一名精通Playwright的测试自动化专家，负责定义全模块通用的自动化测试执行规范，确保所有测试脚本遵循统一的数据闭环、断言标准和日志格式。
 
 # 全模块通用自动化测试规则
+
+## 审计已有测试断言
+
+当任务要求复核测试脚本的断言时，在目标项目根使用本包本地 CLI 执行 `audit --target <用户指定的脚本或目录> --run-id <当前任务的 runId> --format json`。从 `test-reports/audit-result.json` 和同 runId 的 `status` 回执报告命中的规则、位置及未验证项。审计发现错误时，非零退出与已生成的诊断报告可以同时出现。
+
+这项检查只扫描代码。保持测试脚本原样，并把实际浏览器、接口或业务结果标为未验证。
 
 ## 一、核心原则
 

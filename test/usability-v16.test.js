@@ -224,9 +224,11 @@ test("v16: ci 命令生成三种流水线模板", () => {
 // ── MCP 紧凑输出（token 经济学）──
 test("v16: MCP run_api 默认紧凑摘要，detail:full 才回全量", async () => {
   const { createServer: mkMcp } = await import(pathToFileURL(join(__dirname, "..", "mcp", "server.js")).href);
-  const server = mkMcp();
   const url = await startMiniBackend();
   setupTmp();
+  writeFileSync(join(TMP, "wl-test.config.json"), JSON.stringify({ profiles: { fixture: { baseUrl: url, mcp: "api-test", token: "$WL_MCP_FIXTURE_TOKEN" } } }));
+  writeFileSync(join(TMP, ".env"), "WL_MCP_FIXTURE_TOKEN=fixture-compact-token\n");
+  const server = mkMcp({ projectRoot: TMP });
   const contract = join(TMP, "contract.json");
   writeFileSync(
     contract,
@@ -240,14 +242,14 @@ test("v16: MCP run_api 默认紧凑摘要，detail:full 才回全量", async () 
     }),
   );
   try {
-    const res = await server.callTool("wls_test_run_api", { root: TMP, contractPath: contract, baseUrl: url, token: "t" });
-    const parsed = JSON.parse(res.content[0].text);
+    const res = await server.callTool("wls_test_run_api", { root: TMP, contractPath: contract, profile: "fixture" });
+    const parsed = res.structuredContent;
     assert.equal(parsed.pass, true);
     assert.ok(parsed.failures !== undefined && Array.isArray(parsed.failures), "默认应回紧凑 failures 摘要");
     assert.equal(parsed.results, undefined, "默认不得回全量 results（token 浪费）");
 
-    const full = await server.callTool("wls_test_run_api", { root: TMP, contractPath: contract, baseUrl: url, token: "t", detail: "full" });
-    const parsedFull = JSON.parse(full.content[0].text);
+    const full = await server.callTool("wls_test_run_api", { root: TMP, contractPath: contract, profile: "fixture", detail: "full" });
+    const parsedFull = full.structuredContent;
     assert.ok(Array.isArray(parsedFull.results), "detail:full 应回全量");
   } finally {
     urlClose();

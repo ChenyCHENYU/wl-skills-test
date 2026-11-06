@@ -4,7 +4,9 @@
  * 工具数量以 getToolCount() 为准（文档/徽章数字请从代码派生，勿手写）。
  * 注册表与 handlers 的键一致性由 assertRegistryParity 保证（server 启动 + 测试双通道）。
  */
-import Ajv from 'ajv';
+import schemaValidation from '../lib/schema-validation.cjs';
+import { profileProperty } from "./network-profile.js";
+import { resultSchemas } from "./result-schema.js";
 
 export const TOOL_PREFIX = "wls_test";
 
@@ -31,7 +33,7 @@ export const TOOL_DESCRIPTORS = [
     description: "任务技能路由/约束/缺口与可观测回执：task 仅持久化规划，route/explain/status/doctor-host 只读；安装不能证明宿主加载",
     inputSchema: { type: "object", properties: {
       action: { type: "string", enum: ["task", "route", "explain", "status", "doctor-host"] },
-      task: { type: "string" }, root: { type: "string", description: "项目根目录；MCP server cwd 可能不是项目根" },
+      task: { type: "string" }, root: { type: "string", description: "可省略；填写时须与 MCP 启动时绑定的项目根一致" },
       runId: { type: "string", description: "与实际执行命令复用的任务关联 ID" },
       files: { type: "array", items: { type: "string" } }, domain: { type: "string" }, skill: { type: "string" }, host: { type: "string" },
     } },
@@ -54,15 +56,14 @@ export const TOOL_DESCRIPTORS = [
   {
     name: "wls_test_gen_contract",
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    _meta: { wl: { sideEffects: "读取本地或URL的OpenAPI；output指定时写契约" } },
-    description: "从 OpenAPI/Swagger（URL 或 openapi.json）确定性生成测试契约，返回紧凑结果（操作/字段/核对项），可选写入文件",
+    _meta: { wl: { sideEffects: "读取本项目 OpenAPI JSON 或已授权档案的接口；output指定时写契约" } },
+    description: "从 OpenAPI 生成测试契约。swagger（本项目 JSON 路径）与 profile（已授权远程档案）二选一，可选写入文件",
     inputSchema: {
       type: "object",
-      required: ["swagger"],
       properties: {
-        swagger: { type: "string", description: "OpenAPI 地址（http://sit:8080/v3/api-docs）或本地 openapi.json 路径" },
+        swagger: { type: "string", minLength: 1, description: "本项目 openapi.json 路径；远程 OpenAPI 使用 profile" },
+        profile: profileProperty,
         module: { type: "string", description: "只提取该首段路径的模块" },
-        token: { type: "string", description: "拉取 OpenAPI 用的 Authorization（有鉴权的 swagger 网关）" },
         output: { type: "string", description: "契约写入路径（缺省不写文件）" },
       },
     },
@@ -99,19 +100,18 @@ export const TOOL_DESCRIPTORS = [
   },
   {
     name: "wls_test_case_generate",
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    _meta: { wl: { sideEffects: "只读需求/契约并返回用例，不写文件" } },
-    description: "按契约+需求生成测试用例（功能用例+接口用例）",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    _meta: { wl: { sideEffects: "读取契约并返回用例；仅显式output时写本地用例文件" } },
+    description: "从契约生成测试用例矩阵；默认摘要，detail=full返回全量，显式output可保存JSON，不代表执行测试",
     inputSchema: {
       type: "object",
       properties: {
         type: {
           type: "string",
           enum: ["functional", "api", "permission", "smoke"],
-          description: "用例类型",
+          description: "兼容调用方意图标签；当前返回契约完整矩阵，不按该标签过滤",
         },
         contractPath: { type: "string" },
-        requirementPath: { type: "string" },
         granularity: {
           type: "string",
           enum: ["", "field"],
@@ -129,7 +129,7 @@ export const TOOL_DESCRIPTORS = [
     inputSchema: {
       type: "object",
       properties: {
-        casePath: { type: "string", description: "全量用例文件路径" },
+        casePath: { type: "string", description: "当前 MCP 项目内的全量用例文件路径" },
         complexity: {
           type: "string",
           enum: ["simple", "medium", "complex"],
@@ -195,33 +195,35 @@ export const TOOL_DESCRIPTORS = [
   {
     name: "wls_test_fix",
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
-    _meta: { wl: { sideEffects: "预览只读；confirm=true写授权范围内的修复" } },
-    description: "自动修复测试代码反模式（F1-F3：v-deep/beforeEach/waitForTimeout）",
+    _meta: { wl: { sideEffects: "预览返回planHash；confirm=true且携带原planHash后写授权范围内的修复，漂移时零写入" } },
+    description: "预览测试代码反模式修复（F1-F6）；apply须confirm=true和预览planHash，写前重算，修复不等于验证通过",
     inputSchema: {
       type: "object",
       properties: {
         target: { type: "string", description: "修复目标（文件或目录）" },
+        root: { type: "string", minLength: 1, description: "可省略；填写时须与 MCP 启动时绑定的项目根一致" },
+        confirm: { type: "boolean", description: "仅true申请执行原预览计划" },
+        planHash: { type: "string", pattern: "^[a-f0-9]{64}$", description: "原预览返回的哈希；源文件变化后必须重新预览" },
       },
       required: ["target"],
+      allOf: [{ if: { required: ["confirm"], properties: { confirm: { const: true } } }, then: { required: ["planHash"] } }],
     },
   },
   {
     name: "wls_test_run_api",
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     _meta: { wl: { sideEffects: "向目标环境发送真实HTTP请求（可含业务写入/清理），写报告和本包回执" } },
     description: "执行深度 API 接口测试（DAG 编排 + 四层断言：成功码/结构/写后读回/负例与安全 + 契约漂移检测 + 零污染清理）",
     inputSchema: {
       type: "object",
       properties: {
         contractPath: { type: "string", description: "契约文件路径" },
-        baseUrl: { type: "string", description: "目标基址" },
-        token: { type: "string", description: "认证 token" },
-        noPermToken: { type: "string", description: "无权限账号 token（启用权限拒绝验证）" },
+        profile: profileProperty,
         dictFile: { type: "string", description: "字典 JSON 路径（{字段名: [合法值]}）" },
         lenientCoercion: { type: "boolean", description: "类型负例被后端宽恕时记 warn" },
         permWriteProbe: { type: "boolean", description: "对写操作做权限探针（意外成功自动清理）" },
       },
-      required: ["contractPath"],
+      required: ["contractPath", "profile"],
     },
   },
   {
@@ -268,8 +270,8 @@ export const TOOL_DESCRIPTORS = [
   {
     name: "wls_test_report_generate",
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    _meta: { wl: { sideEffects: "聚合真实输入；可写报告/HTML/历史，不代签UAT" } },
-    description: "聚合 run-api/run-playwright/run-jmeter/audit/DI 缺陷结果生成测试报告（对齐规范 10 模板，含上线判定）",
+    _meta: { wl: { sideEffects: "聚合本项目证据，按参数写本项目报告或 HTML，不代签 UAT" } },
+    description: "聚合 run-api/run-playwright/run-jmeter/audit/DI 缺陷结果生成测试报告；报告生成状态与质量判定分别返回",
     inputSchema: {
       type: "object",
       properties: {
@@ -282,7 +284,7 @@ export const TOOL_DESCRIPTORS = [
         allowLegacy: { type: "boolean", description: "旧无回执结果仅导入诊断，不能宣称任务验证通过" },
         trend: { type: "boolean", description: "追加最近 5 次汇总趋势" },
         reportsDir: { type: "string", description: "test-reports 目录（趋势数据源，默认 test-reports）" },
-        output: { type: "string", description: "报告输出路径（可选）" },
+        output: { type: "string", description: "当前 MCP 项目内的报告输出路径（可选）" },
       },
     },
   },
@@ -306,12 +308,10 @@ export const TOOL_DESCRIPTORS = [
     inputSchema: {
       type: "object",
       properties: {
-        baseUrl: { type: "string", description: "被测系统基址" },
-        token: { type: "string", description: "认证 token" },
-        dictApi: { type: "string", description: "字典接口路径（默认 /pl/system/dict/all）" },
+        profile: profileProperty,
         output: { type: "string", description: "输出文件（默认 ./dict.json）" },
       },
-      required: ["baseUrl"],
+      required: ["profile"],
     },
   },
   {
@@ -335,16 +335,45 @@ export const TOOL_DESCRIPTORS = [
   },
 ];
 
+// Every option consumed by an MCP handler is discoverable and validated here.
+// Unknown options are rejected instead of silently enabling undocumented behavior.
+const detailSchema = { type: "string", enum: ["summary", "full"] };
+const outputSchema = { type: "string", minLength: 1, description: "显式本地输出文件；省略时不额外写此文件" };
+const topNSchema = { type: "integer", minimum: 1, maximum: 200 };
+const supportedOptions = {
+  wls_test_contract_diff: { topN: topNSchema },
+  wls_test_case_generate: { detail: detailSchema, output: outputSchema },
+  wls_test_audit: { detail: detailSchema, topN: topNSchema },
+  wls_test_run_api: { detail: detailSchema, topN: topNSchema, output: outputSchema },
+  wls_test_e2e_generate: { routes: { type: "string", minLength: 1, description: "显式routes.json文件路径" }, ui: { type: "string", enum: ["element-plus", "steel", "ant-design"] }, workstation: { type: "boolean" } },
+  wls_test_report_generate: { detail: detailSchema, html: { type: "boolean" }, title: { type: "string" } },
+  wls_test_gate: { perfThreshold: { type: "number", minimum: 0 } },
+};
+for (const descriptor of TOOL_DESCRIPTORS) {
+  Object.assign(descriptor.inputSchema.properties, supportedOptions[descriptor.name] || {});
+  if (Object.hasOwn(resultSchemas, descriptor.name)) descriptor.outputSchema = resultSchemas[descriptor.name];
+  descriptor.inputSchema.additionalProperties = false;
+  if (descriptor.inputSchema.properties.output || descriptor.name === "wls_test_e2e_generate") descriptor.annotations.destructiveHint = true;
+  for (const key of descriptor.inputSchema.required || []) {
+    const property = descriptor.inputSchema.properties[key];
+    if (property?.type === "string") property.minLength ??= 1;
+  }
+}
+
 // Shared correlation metadata is declared for actual execution tools.
 for (const descriptor of TOOL_DESCRIPTORS) {
   if (["wls_test_audit", "wls_test_run_api", "wls_test_run_playwright", "wls_test_run_jmeter", "wls_test_e2e_check", "wls_test_gate", "wls_test_report_generate"].includes(descriptor.name)) {
     Object.assign(descriptor.inputSchema.properties, {
       runId: { type: "string", description: "复用 task 返回的 runId；不跨任务拼接证据" },
-      root: { type: "string", description: "证据所属项目根目录" },
+      root: { type: "string", description: "可省略；填写时须与 MCP 启动时绑定的项目根一致" },
       reportsDir: { type: "string", description: "报告目录；各结果在 runs/<runId> 内保存" },
     });
   }
 }
+
+// Public discovery and protocol.describe use the same host-facing projection;
+// validateToolInput below continues to use TOOL_DESCRIPTORS unchanged.
+export const HOST_TOOL_DESCRIPTORS = TOOL_DESCRIPTORS.map(schemaValidation.projectMcpToolSchema);
 
 export function getToolCount() {
   return TOOL_DESCRIPTORS.length;
@@ -368,30 +397,19 @@ export function assertRegistryParity(handlers) {
 }
 
 /**
- * 按 inputSchema.required 校验 tools/call 参数（运行时防线——
- * 此前 required 只写在 schema 里从不校验，坏参数流进 handler 变成 -32603 内部错误）
+ * tools/call 始终验证完整 Schema；tools/list 可使用宿主兼容投影。
  * @returns {string|null} 错误消息；null 表示通过
  */
 export function validateToolInput(name, args) {
   const descriptor = TOOL_DESCRIPTORS.find((t) => t.name === name);
   if (!descriptor) return null;
-  if (!args || typeof args !== 'object' || Array.isArray(args)) return '参数必须是对象';
-  const required = descriptor.inputSchema?.required || [];
-  const missing = required.filter((k) => args?.[k] === undefined || args?.[k] === null || args?.[k] === "");
-  if (missing.length > 0) return `缺少必填参数: ${missing.join(", ")}`;
-  // 数值类型校验：声明 number 的字段传字符串/对象 → 调用方错误（-32602），而非流进 handler 变 NaN
-  const props = descriptor.inputSchema?.properties ?? {};
-  for (const [key, schema] of Object.entries(props)) {
-    if (schema?.type !== "number") continue;
-    const v = args?.[key];
-    if (v === undefined || v === null) continue;
-    if (typeof v !== "number" || !Number.isFinite(v)) {
-      return `参数 ${key} 必须是数值（当前: ${JSON.stringify(v)}）`;
+  if (["wls_test_gen_contract", "wls_test_run_api", "wls_test_dict_sync"].includes(name) && args && typeof args === "object") {
+    const directFields = ["baseUrl", "token", "noPermToken", "auth", "dictApi"];
+    if (directFields.some(field => Object.hasOwn(args, field)) || (typeof args.swagger === "string" && /^[a-z][a-z\d+.-]*:\/\//i.test(args.swagger))) {
+      return "此工具使用项目 wl-test.config.json 中的 profile；请在本机配置地址和环境变量引用，重连 MCP 后传入档案名";
     }
+    if (name === "wls_test_gen_contract" && Object.hasOwn(args, "swagger") === Object.hasOwn(args, "profile")) return "swagger（本地文件）与 profile（远程档案）必须且只能提供一个";
   }
-  const validator = TOOL_VALIDATORS.get(name);
-  return validator(args) ? null : `参数不符合Schema: ${JSON.stringify(validator.errors)}`;
+  const validation = schemaValidation.validateSchema(descriptor.inputSchema, args);
+  return validation.valid ? null : `参数不符合Schema: ${validation.errors.join("；")}`;
 }
-
-const ajv = new Ajv({ strict: false, allErrors: true });
-const TOOL_VALIDATORS = new Map(TOOL_DESCRIPTORS.map((tool) => [tool.name, ajv.compile(tool.inputSchema)]));

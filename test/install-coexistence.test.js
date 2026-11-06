@@ -6,12 +6,36 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInstallPlan, createCleanPlan, applyInstallPlan } from '../lib/cli/install-state.js';
 import jsonc from '../lib/shared-jsonc.cjs';
+import hostProfiles from '../lib/host-profiles.cjs';
+import { PKG } from '../lib/cli/context.js';
 const filesDir = fileURLToPath(new URL('../files', import.meta.url));
 const begin = '<!-- wl-skills-test:begin -->';
 function tmp(t) { const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wl-test-install-')); t.after(() => fs.rmSync(dir, { recursive: true, force: true })); return dir; }
 function write(root, rel, content) { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), content); }
 function read(root, rel) { return fs.readFileSync(path.join(root, rel), 'utf8'); }
-function install(root, options = {}) { const plan = createInstallPlan(root, { filesDir, ...options }); assert.deepEqual(plan.conflicts, []); applyInstallPlan(plan); return plan; }
+function install(root, options = {}) { const plan = createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true, ...options }); assert.deepEqual(plan.conflicts, []); applyInstallPlan(plan); return plan; }
+
+test('native host gateways share one canonical body and preserve ownership through update and clean', (t) => {
+  const root = tmp(t);
+  const canonical = fs.readFileSync(path.join(filesDir, '.agents/skills/wl-skills-test/SKILL.md'), 'utf8').replaceAll('__WL_SKILLS_TEST_VERSION__', PKG.version);
+  const preexisting = '.claude/skills/wl-skills-test/SKILL.md';
+  write(root, preexisting, canonical);
+  install(root);
+  for (const rel of hostProfiles.gatewayInstallPaths(PKG.name, { hosts: 'all' })) assert.equal(read(root, rel), canonical);
+  const state = JSON.parse(read(root, '.wl-skills/state/test/manifest.json'));
+  assert.ok(!state.files.some(item => item.path === preexisting));
+  const missing = '.kiro/skills/wl-skills-test/SKILL.md';
+  fs.unlinkSync(path.join(root, missing)); install(root); assert.equal(read(root, missing), canonical);
+  const customized = '.agents/skills/wl-skills-test/SKILL.md';
+  write(root, customized, canonical + '\nProject customization.\n');
+  const plan = createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true });
+  assert.ok(plan.conflicts.some(item => item.path === customized));
+  assert.throws(() => applyInstallPlan(plan), /冲突/);
+  applyInstallPlan(createCleanPlan(root));
+  assert.equal(read(root, customized), canonical + '\nProject customization.\n');
+  assert.equal(read(root, preexisting), canonical);
+  assert.ok(!fs.existsSync(path.join(root, missing)));
+});
 
 test('install / clean preserve user Markdown, editor directories, and foreign JSONC server bytes', (t) => {
   const root = tmp(t);
@@ -37,7 +61,7 @@ test('same-content preexisting payload is never claimed or removed', (t) => {
   const root = tmp(t); const rel = '.github/skills/plan/test-plan-generator/SKILL.md';
   const content = fs.readFileSync(path.join(filesDir, rel), 'utf8'); write(root, rel, content);
   install(root);
-  const state = JSON.parse(read(root, '.wl-skills-test/manifest.json'));
+  const state = JSON.parse(read(root, '.wl-skills/state/test/manifest.json'));
   assert.ok(!state.files.some((file) => file.path === rel));
   applyInstallPlan(createCleanPlan(root)); assert.equal(read(root, rel), content);
 });
@@ -46,7 +70,7 @@ test('unknown private path or same MCP key blocks every write, even with force',
   const root = tmp(t); write(root, '.mcp.json', '{"mcpServers":{"wl-skills-test":{"command":"user"}}}');
   write(root, '.github/skills/plan/test-plan-generator/SKILL.md', 'USER');
   const before = read(root, '.mcp.json');
-  const plan = createInstallPlan(root, { filesDir, force: true });
+  const plan = createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true, force: true });
   assert.ok(plan.conflicts.some((file) => file.path === '.mcp.json'));
   assert.throws(() => applyInstallPlan(plan), /冲突/);
   assert.equal(read(root, '.mcp.json'), before);
@@ -55,7 +79,7 @@ test('unknown private path or same MCP key blocks every write, even with force',
 
 test('malformed JSON and directory-shaped targets fail preflight before writes', (t) => {
   const root = tmp(t); write(root, '.mcp.json', '{ broken'); fs.mkdirSync(path.join(root, 'AGENTS.md'));
-  const plan = createInstallPlan(root, { filesDir });
+  const plan = createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true });
   assert.ok(plan.conflicts.some((file) => file.path === '.mcp.json'));
   assert.ok(plan.conflicts.some((file) => file.path === 'AGENTS.md'));
   assert.throws(() => applyInstallPlan(plan), /冲突/);
@@ -66,12 +90,12 @@ test('update uses the actual previous baseline; user changes stay conflicted wit
   const root = tmp(t); const payload = tmp(t);
   write(payload, 'AGENTS.md', '# Test __WL_SKILLS_TEST_VERSION__\nOld rule\n');
   write(payload, 'owned.txt', 'old payload');
-  const p1 = createInstallPlan(root, { filesDir: payload, version: '0.1.0' }); applyInstallPlan(p1);
+  const p1 = createInstallPlan(root, { filesDir: payload, integration: 'expanded', version: '0.1.0' }); applyInstallPlan(p1);
   write(payload, 'AGENTS.md', '# Test __WL_SKILLS_TEST_VERSION__\nNew rule\n'); write(payload, 'owned.txt', 'new payload');
-  const p2 = createInstallPlan(root, { filesDir: payload, version: '0.2.0' }); assert.deepEqual(p2.conflicts, []); applyInstallPlan(p2);
+  const p2 = createInstallPlan(root, { filesDir: payload, integration: 'expanded', version: '0.2.0' }); assert.deepEqual(p2.conflicts, []); applyInstallPlan(p2);
   assert.ok(read(root, 'AGENTS.md').includes('New rule')); assert.equal(read(root, 'owned.txt'), 'new payload');
   write(root, 'AGENTS.md', read(root, 'AGENTS.md').replace('New rule', 'USER RULE'));
-  const p3 = createInstallPlan(root, { filesDir: payload }); assert.ok(p3.conflicts.some((item) => item.path === 'AGENTS.md'));
+  const p3 = createInstallPlan(root, { filesDir: payload, integration: 'expanded' }); assert.ok(p3.conflicts.some((item) => item.path === 'AGENTS.md'));
   applyInstallPlan(createCleanPlan(root)); assert.ok(read(root, 'AGENTS.md').includes('USER RULE'));
 });
 
@@ -79,7 +103,7 @@ test('force changes only own recorded Markdown block; clean preserves changed un
   const root = tmp(t); install(root);
   write(root, 'AGENTS.md', 'USER PREFIX\n' + read(root, 'AGENTS.md').replace('# wl-skills-test 任务入口', '# LOCAL CHANGE') + '\n<!-- wl-skills-bd:begin -->\nBD\n<!-- wl-skills-bd:end -->');
   const clean = createCleanPlan(root); assert.ok(clean.conflicts.some((item) => item.path === 'AGENTS.md'));
-  const plan = createInstallPlan(root, { filesDir, force: true }); assert.deepEqual(plan.conflicts, []); applyInstallPlan(plan);
+  const plan = createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true, force: true }); assert.deepEqual(plan.conflicts, []); applyInstallPlan(plan);
   assert.ok(read(root, 'AGENTS.md').startsWith('USER PREFIX\n'));
   assert.ok(read(root, 'AGENTS.md').includes('<!-- wl-skills-bd:begin -->\nBD'));
 });
@@ -94,7 +118,7 @@ test('legacy file editor rules migrate without losing customized original rules'
 
 test('foreign file editor rules are retained and reported, never converted automatically', (t) => {
   const root = tmp(t); write(root, '.kiro', 'USER ONLY');
-  const plan = createInstallPlan(root, { filesDir, force: true }); assert.ok(plan.conflicts.length);
+  const plan = createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true, force: true }); assert.ok(plan.conflicts.length);
   assert.throws(() => applyInstallPlan(plan)); assert.equal(read(root, '.kiro'), 'USER ONLY');
   assert.ok(!fs.existsSync(path.join(root, '.github')));
 });
@@ -102,13 +126,13 @@ test('foreign file editor rules are retained and reported, never converted autom
 test('write failure restores foreign contents and the original legacy editor file', (t) => {
   const root = tmp(t); const old = '@agile-team/wl-skills-test\nOLD EDITOR\n';
   write(root, '.cursor', old); write(root, 'AGENTS.md', 'USER ORIGINAL');
-  const plan = createInstallPlan(root, { filesDir }); assert.deepEqual(plan.conflicts, []);
+  const plan = createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true }); assert.deepEqual(plan.conflicts, []);
   let writes = 0;
   assert.throws(() => applyInstallPlan(plan, { writeFile(file, content, encoding) {
     if (++writes === 8) throw new Error('injected write failure'); fs.writeFileSync(file, content, encoding);
   } }), /已回滚/);
   assert.equal(read(root, '.cursor'), old); assert.equal(read(root, 'AGENTS.md'), 'USER ORIGINAL');
-  assert.ok(!fs.existsSync(path.join(root, '.wl-skills-test/manifest.json')));
+  assert.ok(!fs.existsSync(path.join(root, '.wl-skills/state/test/manifest.json')));
 });
 
 test('namespaced route evaluations and shared indices survive other package contributions', (t) => {
@@ -126,20 +150,24 @@ test('comments added inside owned MCP entry preserve that entry and its ownershi
   const root = tmp(t); install(root);
   const edited = read(root, '.mcp.json').replace('"command":', '/* USER NODE COMMENT */"command":');
   write(root, '.mcp.json', edited);
-  const update = createInstallPlan(root, { filesDir });
+  const update = createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true });
   assert.ok(update.conflicts.some((item) => item.path === '.mcp.json'));
   const clean = createCleanPlan(root); assert.ok(clean.conflicts.some((item) => item.path === '.mcp.json'));
   applyInstallPlan(clean); assert.equal(read(root, '.mcp.json'), edited);
-  assert.ok(JSON.parse(read(root, '.wl-skills-test/manifest.json')).files.some((item) => item.path === '.mcp.json'));
+  const retained = JSON.parse(read(root, '.wl-skills/state/test/manifest.json'));
+  assert.ok(retained.managedMcp.records['.mcp.json']);
+  assert.ok(!retained.files.some((item) => item.path === '.mcp.json'));
 });
 
 test('legacy semantic-only MCP ownership never adopts and deletes node comments', (t) => {
   const root = tmp(t); install(root);
-  const manifest = JSON.parse(read(root, '.wl-skills-test/manifest.json'));
-  delete manifest.files.find((item) => item.path === '.mcp.json').installedTextHash;
-  write(root, '.wl-skills-test/manifest.json', JSON.stringify(manifest));
+  const manifest = JSON.parse(read(root, '.wl-skills/state/test/manifest.json'));
+  const native = manifest.managedMcp.records['.mcp.json'];
+  manifest.files.push({ path: '.mcp.json', kind: 'mcp', key: 'wl-skills-test', hash: native.valueHash, content: JSON.stringify(jsonc.getJsoncValue(read(root, '.mcp.json'), ['mcpServers', 'wl-skills-test'])), created: native.createdFile });
+  delete manifest.managedMcp.records['.mcp.json'];
+  write(root, '.wl-skills/state/test/manifest.json', JSON.stringify(manifest));
   const edited = read(root, '.mcp.json').replace('"command":', '/* LEGACY USER COMMENT */"command":');
   write(root, '.mcp.json', edited);
-  assert.ok(createInstallPlan(root, { filesDir }).conflicts.some((item) => item.path === '.mcp.json'));
+  assert.ok(createInstallPlan(root, { filesDir, integration: 'expanded', hosts: 'all', mcp: true }).conflicts.some((item) => item.path === '.mcp.json'));
   applyInstallPlan(createCleanPlan(root)); assert.equal(read(root, '.mcp.json'), edited);
 });

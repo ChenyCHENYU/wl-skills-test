@@ -184,9 +184,9 @@ test('SIT CLI and MCP reject malformed requests with no writes; MCP shares engin
   const cli = (args) => spawnSync(process.execPath, [path.join(pkg, 'bin/wl-skills-test.js'), 'sit', ...args], { cwd: root, encoding: 'utf8' });
   for (const args of [['generate', '--input'], ['generate', '--input=' + inputFile, '--output'], ['verify', '--input', inputFile, '--phase', 'wat'], ['templates', '--force']]) { const run = cli(args); assert.equal(run.status, 2); assert.equal(JSON.parse(run.stdout).ok, false); }
   const valid = cli(['verify', '--input=' + inputFile, '--phase=pre-uat', '--json']); assert.equal(valid.status, 0); assert.equal(JSON.parse(valid.stdout).result.passed, true);
-  const server = createServer();
+  const server = createServer({ projectRoot: root });
   for (const invalid of [false, null, [], { inputFile, phase: true }]) assert.equal((await server.callTool('wls_test_sit_verify', invalid)).isError, true);
-  const result = await server.callTool('wls_test_sit_verify', { inputFile, phase: 'pre-uat' }); assert.equal(JSON.parse(result.content[0].text).passed, true);
+  const result = await server.callTool('wls_test_sit_verify', { inputFile, phase: 'pre-uat' }); assert.equal(result.structuredContent.passed, true);
 });
 test('Public protocol SIT executor preserves notice/runId and evidence mutations make status stale', (t) => {
   const { root, input } = fixture(t); applyInstallPlan(createInstallPlan(root, { filesDir: path.join(pkg, 'files'), version: PKG.version }));

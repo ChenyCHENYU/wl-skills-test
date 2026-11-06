@@ -3,7 +3,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { writeFileSync, rmSync, existsSync, mkdirSync } from "node:fs";
+import { writeFileSync, readFileSync, rmSync, existsSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateJmeterScript } from "../lib/jmeter-generator.js";
@@ -122,6 +122,9 @@ test("自一致性: 生成的 E2E 脚手架整体通过自家 audit", () => {
   try {
     generateE2eScaffold(spec, { outputDir: outDir, baseUrl: "http://localhost:8080" });
     assert.ok(existsSync(join(outDir, "playwright.config.js")));
+    const quarantine = join(outDir, "tests", "quarantine.spec.js");
+    const quarantineSource = readFileSync(quarantine, "utf-8");
+    assert.doesNotMatch(quarantineSource, /expect\(true\)/);
     // 审计整个脚手架目录（spec 文件按 Playwright 规则审计）
     const result = audit(outDir);
     assert.equal(
@@ -129,6 +132,8 @@ test("自一致性: 生成的 E2E 脚手架整体通过自家 audit", () => {
       true,
       `E2E 脚手架应通过自审计: ${JSON.stringify(result.findings.map((f) => f.rule + ":" + f.message))}`,
     );
+    writeFileSync(quarantine, quarantineSource.replace('test.skip("B1', 'test("B1'));
+    assert.ok(audit(quarantine).findings.some((finding) => finding.rule === "T3"));
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }
@@ -230,6 +235,31 @@ function auditSnippet(name, content) {
 }
 
 const PW_HEAD = `import { test, expect } from "@playwright/test";\ntest.beforeEach(() => {});\ntest.afterEach(() => {});\n`;
+
+test("T3: 只有常量占位断言的测试块阻止审计通过", () => {
+  const result = auditSnippet("assertions.spec.js", PW_HEAD + `
+test("验证库存", () => { expect(true).toBe(true); });
+test("验证批次", () => { expect.soft('fixed').not.toBe('other'); });
+test("验证缺货", () => { expect(0).toBeFalsy(); });
+`);
+  assert.equal(result.pass, false);
+  assert.match(result.findings.find((finding) => finding.rule === "T3").message, /3\/3.*常量占位断言/);
+});
+
+test("T3: 动态断言不会被字面量预期值或源码中的注释误判", () => {
+  const result = auditSnippet("assertions.spec.js", PW_HEAD + `
+test("验证库存", async ({ page }) => {
+  // expect(true).toBe(true);
+  await expect(page.getByText("available")).toBeVisible();
+});
+test("验证批次", () => {
+  expect(true).toBe(record.active);
+  expect(record.quantity).toBe(0);
+});
+`);
+  assert.equal(result.pass, true);
+  assert.equal(result.findings.some((finding) => finding.rule === "T3"), false);
+});
 
 test("T21: test.only 被检出", () => {
   const r = auditSnippet("x.spec.js", PW_HEAD + `test.only("验证a", async ({ page }) => {\n  await expect(page.locator("a")).toBeVisible();\n});\n`);

@@ -250,7 +250,8 @@ test("CLI: gate 聚合卡门（通过场景零退出）", () => {
   try {
     const r = runCli(["gate", "--smoke-result", join(TMP, "smoke.json")]);
     assert.equal(r.status, 0, `stdout: ${r.stdout}`);
-    assert.ok(r.stdout.includes("质量门通过"));
+    assert.ok(r.stdout.includes("所选检查全部通过"));
+    assert.ok(!r.stdout.includes("允许上线"));
   } finally {
     rmForce(TMP);
     rmForce(join(TMP, "test-reports"));

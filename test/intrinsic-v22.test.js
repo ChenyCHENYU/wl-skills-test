@@ -263,9 +263,9 @@ test("v22: MCP wls_test_gen_contract 紧凑输出并落契约文件", async () =
   const file = join(TMP, "openapi.json");
   writeFileSync(file, JSON.stringify(spec));
   try {
-    const { HANDLERS } = await import(pathToFileURL(join(__dirname, "..", "mcp", "tools", "handlers.js")).href);
+    const { createServer } = await import(pathToFileURL(join(__dirname, "..", "mcp", "server.js")).href);
     const out = join(TMP, "wl-contract.json");
-    const r = await HANDLERS.wls_test_gen_contract({ swagger: file, output: out });
+    const { structuredContent: r } = await createServer({ projectRoot: TMP }).callTool("wls_test_gen_contract", { swagger: file, output: out });
     assert.equal(r.error, undefined, JSON.stringify(r.error));
     assert.equal(r.entity, "O");
     assert.equal(r.fieldCount, 1);

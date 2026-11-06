@@ -11,6 +11,7 @@
   "skills": [
     {
       "id": "test-onboarding",
+      "description": "Use when the user asks to onboard/integrate testing into a project (接入测试/上质量门禁). Deterministic SOP: detect project shape, extract contract from existing OpenAPI/api docs, validate, configure profiles, trial-run, report. AI orchestrates; scripts and tools execute.",
       "path": ".github/skills/onboarding/test-onboarding/SKILL.md",
       "phrases": [
         "接入测试",
@@ -30,10 +31,26 @@
       ],
       "constraints": [
         "接入先探测项目与真实接口来源；凭据使用环境引用，不写明文"
+      ],
+      "name": "测试接入引导（test-onboarding）",
+      "combinations": [
+        {
+          "verbs": [
+            "接入",
+            "集成",
+            "检测"
+          ],
+          "objects": [
+            "自动化测试",
+            "测试工程",
+            "接入方案"
+          ]
+        }
       ]
     },
     {
       "id": "test-plan-generator",
+      "description": "Use when generating PC enterprise test plans from real requirements. Preserve the user's Office template, trace scope and acceptance criteria to sources, and report missing facts instead of inventing defaults.",
       "path": ".github/skills/plan/test-plan-generator/SKILL.md",
       "phrases": [
         "生成测试方案",
@@ -58,10 +75,30 @@
       "constraints": [
         "需求事实缺失要列待补项，不编造业务事实",
         "SIT沿用原Excel模板；提前7日交付方案/用例，转UAT前交付至少两轮全量记录/问题/报告；生成不代替执行或客户签收"
+      ],
+      "name": "项目测试方案通用生成规则",
+      "combinations": [
+        {
+          "verbs": [
+            "制定",
+            "编制",
+            "生成"
+          ],
+          "objects": [
+            "测试计划",
+            "测试方案"
+          ],
+          "exclude": [
+            "性能测试",
+            "压测",
+            "performance"
+          ]
+        }
       ]
     },
     {
       "id": "test-scenario-analyzer",
+      "description": "Use when analyzing requirements/design documents to produce a comprehensive business scenario catalog. Covers 10 scenario types (main flow, branch, exception, permission, cross-system, state machine, rollback, cross-cycle, batch, multi-source), lifecycle modeling, cross-validation, and hidden risk mining.",
       "path": ".github/skills/plan/test-scenario-analyzer/SKILL.md",
       "phrases": [
         "分析业务场景",
@@ -80,13 +117,35 @@
       ],
       "constraints": [
         "按真实业务流程、权限和异常分支设计场景"
+      ],
+      "name": "业务场景智能分析技能",
+      "combinations": [
+        {
+          "verbs": [
+            "分析",
+            "梳理",
+            "识别"
+          ],
+          "objects": [
+            "测试场景",
+            "业务场景"
+          ]
+        }
       ]
     },
     {
       "id": "test-case-generator",
+      "description": "Use when generating test cases from requirements/design documents. Covers test design techniques, output format, coverage requirements, and constraints for enterprise information system testing.",
       "path": ".github/skills/case/test-case-generator/SKILL.md",
       "phrases": [
         "生成测试用例",
+        "编写测试用例",
+        "生成接口测试用例",
+        "编写接口测试用例",
+        "补充接口测试用例",
+        "补充测试用例",
+        "补测试用例",
+        "设计测试用例",
         "编写用例",
         "功能用例",
         "接口用例",
@@ -112,10 +171,31 @@
       "constraints": [
         "用例基于需求与实际接口；页面路由不能替代 API 事实",
         "SIT沿用原Excel模板；提前7日交付方案/用例，转UAT前交付至少两轮全量记录/问题/报告；生成不代替执行或客户签收"
+      ],
+      "name": "测试用例生成器",
+      "combinations": [
+        {
+          "verbs": [
+            "生成",
+            "编写",
+            "写",
+            "整理",
+            "补齐",
+            "补充",
+            "拆成",
+            "设计"
+          ],
+          "objects": [
+            "测试用例",
+            "用例",
+            "正反例"
+          ]
+        }
       ]
     },
     {
       "id": "test-case-reviewer",
+      "description": "Use when reviewing test cases for quality — checks 5 dimensions: business coverage, specification compliance, executability, data integrity, and boundary/exception coverage. Auto-links with scenario analysis documents when present.",
       "path": ".github/skills/case/test-case-reviewer/SKILL.md",
       "phrases": [
         "评审测试用例",
@@ -135,10 +215,27 @@
       ],
       "constraints": [
         "评审默认只读，引用具体用例与覆盖缺口"
+      ],
+      "name": "测试用例评审技能",
+      "combinations": [
+        {
+          "verbs": [
+            "评审",
+            "审查",
+            "检查",
+            "核对"
+          ],
+          "objects": [
+            "测试用例",
+            "用例表",
+            "用例质量"
+          ]
+        }
       ]
     },
     {
       "id": "smoke-test-selector",
+      "description": "Use when needing to automatically filter a minimal, stable smoke test suite from a full test case repository. Covers inclusion/exclusion rules, quantitative suite sizing, and traceability requirements.",
       "path": ".github/skills/case/smoke-test-selector/SKILL.md",
       "phrases": [
         "筛选冒烟用例",
@@ -155,10 +252,28 @@
       ],
       "constraints": [
         "选择真实核心流程，并保留纳入和排除依据"
+      ],
+      "name": "冒烟用例筛选规则",
+      "combinations": [
+        {
+          "verbs": [
+            "筛选",
+            "挑选",
+            "选出",
+            "选择",
+            "选一套",
+            "提取"
+          ],
+          "objects": [
+            "冒烟",
+            "smoke"
+          ]
+        }
       ]
     },
     {
       "id": "smoke-test-executor",
+      "description": "Use when executing a smoke test suite — validates system basic availability, generates standardized smoke test reports with pass/fail criteria, retry logic, and block detection.",
       "path": ".github/skills/exec/smoke-test-executor/SKILL.md",
       "phrases": [
         "执行冒烟测试",
@@ -176,10 +291,25 @@
       ],
       "constraints": [
         "真实执行才给通过结论；写请求需明确授权与清理，缺 API 事实先补契约"
+      ],
+      "name": "冒烟用例执行规则",
+      "combinations": [
+        {
+          "verbs": [
+            "执行",
+            "跑",
+            "运行"
+          ],
+          "objects": [
+            "冒烟",
+            "smoke"
+          ]
+        }
       ]
     },
     {
       "id": "test-script-generator",
+      "description": "Use when automatically generating executable Playwright test scripts from page URLs or screenshots. Covers element recognition, action patterns, waiting strategies, and assertion standards.",
       "path": ".github/skills/exec/test-script-generator/SKILL.md",
       "phrases": [
         "生成自动化脚本",
@@ -199,16 +329,38 @@
       ],
       "constraints": [
         "UI 可独立生成；API 脚本只能使用真实声明的方法与路径，保留执行和跳过证据"
+      ],
+      "name": "测试脚本生成器",
+      "combinations": [
+        {
+          "verbs": [
+            "生成",
+            "编写",
+            "写",
+            "补齐",
+            "构建"
+          ],
+          "objects": [
+            "Playwright",
+            "浏览器自动化",
+            "E2E",
+            "UI自动化"
+          ]
+        }
       ]
     },
     {
       "id": "universal-test-rules",
+      "description": "Use when applying automated testing standards or statically auditing existing test code for weak, missing, or always-true assertions. Covers test flow, assertions, exception handling, page-level behavior, data lifecycle, and reporting.",
       "path": ".github/skills/exec/universal-test-rules/SKILL.md",
       "phrases": [
         "自动化测试规则",
         "通用测试规则",
         "测试执行规范",
-        "test execution rules"
+        "test execution rules",
+        "测试代码审计",
+        "测试脚本审计",
+        "test code audit"
       ],
       "exclude": [
         "不是测试规则"
@@ -219,10 +371,53 @@
       ],
       "constraints": [
         "断言真实行为，隔离测试数据，并明确哪些检查未执行"
+      ],
+      "name": "全模块通用自动化测试规则",
+      "combinations": [
+        {
+          "verbs": [
+            "统一",
+            "制定",
+            "明确",
+            "整理",
+            "建立"
+          ],
+          "objects": [
+            "自动化执行规则",
+            "自动化测试规则",
+            "测试执行规范"
+          ]
+        },
+        {
+          "verbs": [
+            "检查",
+            "审查",
+            "审计",
+            "核对",
+            "audit",
+            "check",
+            "review"
+          ],
+          "objects": [
+            "测试断言",
+            "Playwright 断言",
+            "断言有效性",
+            "断言覆盖",
+            "弱断言",
+            "空断言",
+            "恒真断言",
+            "test assertions",
+            "Playwright assertions",
+            "assertion quality",
+            "weak assertions",
+            "tautological assertions"
+          ]
+        }
       ]
     },
     {
       "id": "test-quality-analyzer",
+      "description": "Use when analyzing multi-round test execution results and issue sheets to produce practical quality assessments. Covers DI-based defect analysis, module-level pass rates, round-by-round trend comparison, and go/no-go release decisions.",
       "path": ".github/skills/quality/test-quality-analyzer/SKILL.md",
       "phrases": [
         "质量评估",
@@ -249,10 +444,29 @@
       "constraints": [
         "完成执行不等于验证通过；未执行维度不能默认为通过",
         "SIT沿用原Excel模板；提前7日交付方案/用例，转UAT前交付至少两轮全量记录/问题/报告；生成不代替执行或客户签收"
+      ],
+      "name": "测试质量评估技能",
+      "combinations": [
+        {
+          "verbs": [
+            "分析",
+            "对比",
+            "评估",
+            "汇总"
+          ],
+          "objects": [
+            "执行结果",
+            "缺陷表",
+            "测试报告",
+            "缺陷指数",
+            "问题表"
+          ]
+        }
       ]
     },
     {
       "id": "perf-plan-generator",
+      "description": "Use when designing a performance test plan — transforms API docs and business requirements into a complete standardized test plan with scene design, gradient concurrency strategy, SLA thresholds, environment requirements, and monitoring setup.",
       "path": ".github/skills/perf/perf-plan-generator/SKILL.md",
       "phrases": [
         "性能测试方案",
@@ -270,10 +484,30 @@
       ],
       "constraints": [
         "压测目标、环境、SLA 与数据来自明确要求，计划不授权发请求"
+      ],
+      "name": "性能测试方案生成技能",
+      "combinations": [
+        {
+          "verbs": [
+            "设计",
+            "制定",
+            "编制",
+            "整理",
+            "生成"
+          ],
+          "objects": [
+            "压测方案",
+            "性能测试计划",
+            "并发阶梯",
+            "吞吐目标",
+            "性能测试方案"
+          ]
+        }
       ]
     },
     {
       "id": "perf-script-generator",
+      "description": "Use when generating JMeter test scripts from confirmed API definitions and an authorized load plan. Report generated/loading/execution states separately; preserve real tool versions, authentication facts, data isolation and cleanup constraints.",
       "path": ".github/skills/perf/perf-script-generator/SKILL.md",
       "phrases": [
         "JMeter 脚本",
@@ -291,10 +525,27 @@
       ],
       "constraints": [
         "真实 API 契约决定方法和路径，压测与业务写入必须在授权环境执行"
+      ],
+      "name": "性能测试脚本生成技能",
+      "combinations": [
+        {
+          "verbs": [
+            "生成",
+            "编写",
+            "写",
+            "构建"
+          ],
+          "objects": [
+            "JMeter",
+            "jmx",
+            "压测脚本"
+          ]
+        }
       ]
     },
     {
       "id": "perf-report-analyzer",
+      "description": "Use when analyzing performance test results — parses JMeter jtl files and monitoring CSVs to produce a standardized analysis report with bottleneck diagnosis, optimization suggestions, and baseline comparison. Spans 3-version trend analysis.",
       "path": ".github/skills/perf/perf-report-analyzer/SKILL.md",
       "phrases": [
         "分析性能报告",
@@ -312,6 +563,23 @@
       ],
       "constraints": [
         "引用本次实际样本与基线，缺采样或缺 SLA 要明确未验证"
+      ],
+      "name": "性能测试报告分析技能",
+      "combinations": [
+        {
+          "verbs": [
+            "分析",
+            "对比",
+            "评估",
+            "解读"
+          ],
+          "objects": [
+            "JTL",
+            "性能报告",
+            "监控CSV",
+            "压测结果"
+          ]
+        }
       ]
     }
   ]

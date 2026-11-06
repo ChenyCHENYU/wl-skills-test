@@ -45,7 +45,8 @@ test("quality-gate: = 风格参数，通过场景退出码 0", () => {
   try {
     const r = runGate(["--defects=" + defects, "--cases=200", "--round-results=" + rounds]);
     assert.equal(r.status, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
-    assert.ok(r.stdout.includes("质量门通过"));
+    assert.ok(r.stdout.includes("所选检查全部通过"));
+    assert.ok(!r.stdout.includes("允许上线"));
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }
@@ -55,10 +56,12 @@ test("quality-gate: 空格风格参数，失败场景退出码 1", () => {
   setupTmp();
   const defects = join(TMP, "fail.json");
   writeFileSync(defects, JSON.stringify(FAIL_DEFECTS));
+  const rounds = join(TMP, "rounds.json");
+  writeFileSync(rounds, JSON.stringify([{ total: 50, passed: 50, failed: 0, errors: 0, skipped: 0, passRate: 100 }]));
   try {
-    const r = runGate(["--defects", defects, "--cases", "50"]);
+    const r = runGate(["--defects", defects, "--cases", "50", "--round-results", rounds]);
     assert.equal(r.status, 1);
-    assert.ok(r.stdout.includes("质量门未通过"));
+    assert.ok(r.stdout.includes("所选检查未通过"));
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }

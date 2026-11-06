@@ -50,7 +50,7 @@ if (!defectsArg && !auditArg && !smokeArg) {
   const result = await runGate({ defects: defectsArg, cases: caseCount, auditDir: auditArg, smokeResult: smokeArg, roundResults: opts["round-results"] });
   if (result.error || result.inputErrors?.length) {
     for (const error of result.inputErrors || [result.error]) console.error(`  ✗ 输入错误: ${error}`);
-    console.error("\n❌ 质量门输入无效或未验证，阻断上线（fail-closed）\n");
+    console.error("\n❌ 质量门输入无效或未验证，阻断当前质量门\n");
     process.exitCode = 1;
   } else {
     for (const check of result.checks) console.log(`  ${check.pass ? "✓" : "✗"} ${check.name}: ${check.detail}`);

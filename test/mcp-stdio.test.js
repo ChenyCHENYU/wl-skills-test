@@ -6,12 +6,15 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ENTRY = join(__dirname, "..", "mcp", "index.js");
 
 function startServer() {
-  const child = spawn(process.execPath, [MCP_ENTRY], { stdio: ["pipe", "pipe", "pipe"] });
+  const cwd = mkdtempSync(join(tmpdir(), "wl-mcp-stdio-"));
+  const child = spawn(process.execPath, [MCP_ENTRY], { cwd, stdio: ["pipe", "pipe", "pipe"] });
   let seq = 0;
   const pending = new Map();
 
@@ -56,6 +59,7 @@ function startServer() {
     },
     close() {
       child.kill();
+      rmSync(cwd, { recursive: true, force: true });
     },
   };
 }
@@ -220,8 +224,7 @@ test("MCP stdio: 同步工具调用返回真实数据（非空对象）", async 
       name: "wls_test_standards",
       arguments: {},
     });
-    const text = res.result.content[0].text;
-    const parsed = JSON.parse(text);
+    const parsed = res.result.structuredContent;
     assert.ok(Array.isArray(parsed.standards));
     assert.ok(parsed.standards.length >= 11);
   } finally {
@@ -234,10 +237,9 @@ test("MCP stdio: 异步工具（run_api）不再序列化为空对象", async ()
   try {
     const res = await server.send("tools/call", {
       name: "wls_test_run_api",
-      arguments: { contractPath: "no-such-contract.json" },
+      arguments: { profile: "unconfigured", contractPath: "no-such-contract.json" },
     });
-    const text = res.result.content[0].text;
-    const parsed = JSON.parse(text);
+    const parsed = res.result.structuredContent;
     assert.ok(parsed.error, "async handler 的结果应被正确序列化（旧 bug 序列化 Promise 得 {}）");
   } finally {
     server.close();

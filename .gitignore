@@ -4,3 +4,6 @@ test-reports/
 *.tgz
 .playwright-report/
 test-results/
+
+# Unified local WL execution evidence and installation backups
+**/.wl-skills/state/

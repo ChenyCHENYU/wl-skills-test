@@ -21,6 +21,9 @@ jobs:
           cache: npm
       - name: 安装锁定依赖
         run: npm ci --ignore-scripts
+      - name: Verify offline distribution and npm payload
+        run: npm run support:check && npm run support:pack-check
+
       - name: 运行完整测试（单元/集成/自一致性/MCP stdio/mock 后端）
         run: npm run verify
       - name: 审计锁定的运行时依赖
@@ -28,21 +31,6 @@ jobs:
         run: npm audit --omit=dev --audit-level=moderate
       - name: npm pack 校验（发布产物完整性）
         run: npm pack --dry-run --ignore-scripts
-
-  publish:
-    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'release')
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org/
-      - run: npm ci --ignore-scripts
-      - run: npm publish --access public --ignore-scripts
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   compatibility:
     name: Published baseline upgrade and coexistence

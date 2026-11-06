@@ -195,6 +195,12 @@ test("JMeter: 生成有效 jmx 含线程组和采样器", () => {
     assert.ok(jmx.includes("<HTTPSamplerProxy"));
     assert.ok(jmx.includes("num_threads"), "应含线程数属性");
     assert.ok(jmx.includes("__P(threads,50)"), "线程数应属性化（-Jthreads 运行时可调）");
+    for (const name of ["ThreadGroup.num_threads", "ThreadGroup.ramp_time", "LoopController.loops"]) {
+      assert.ok(jmx.includes(`<stringProp name="${name}">\${__P(`));
+      assert.ok(!jmx.includes(`<intProp name="${name}">`), "JMeter 在加载时解析 intProp，不能承载函数");
+    }
+    assert.ok(jmx.includes('<boolProp name="LoopController.continue_forever">false</boolProp>'));
+    assert.ok(jmx.includes('<elementProp name="HTTPsampler.Arguments" elementType="Arguments">'));
     assert.ok(jmx.includes("ResultCollector"));
     assert.ok(jmx.includes("queryPage"));
     assert.ok(jmx.includes("<CSVDataSet"), "应含 CSV 参数化");

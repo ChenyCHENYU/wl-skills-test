@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { runJmeter, parseJtlResults } from '../lib/executors.js';
@@ -44,6 +45,45 @@ test('JMeter retains JMX threads unless explicitly overridden; invalid override 
   for (const threads of [true, 0, -1, '7', 1.2]) assert.ok((await runJmeter({ jmxPath: plan, jmeterPath: bin, threads, resultDir: path.join(root, 'invalid') })).error);
   assert.deepEqual(fs.readFileSync(argsFile), before); assert.equal(fs.existsSync(path.join(root, 'invalid')), false);
 });
+test('overlapping JMeter runs keep their own samples and retain earlier artifacts', { skip: process.platform === 'win32' }, async (t) => {
+  const { root, bin } = fixture(t);
+  const paths = [path.join(root, 'slow.jmx'), path.join(root, 'fast.jmx')];
+  for (const file of paths) fs.writeFileSync(file, '<jmeterTestPlan/>');
+  const ready = path.join(root, 'slow-written');
+  const fastDone = path.join(root, 'fast-written');
+  fs.writeFileSync(bin, `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+if (args.includes('--version')) { console.log('Apache JMeter 5.6.3'); process.exit(0); }
+const slow = args[args.indexOf('-t')+1].endsWith('slow.jmx');
+const ready = ${JSON.stringify(ready)}, fastDone = ${JSON.stringify(fastDone)};
+function sample() {
+  fs.writeFileSync(args[args.indexOf('-l')+1], 'timeStamp,elapsed,label,success\\n1700000000000,' + (slow ? '900,slow,false' : '20,fast,true') + '\\n');
+}
+function after(file, done) {
+  let ticks = 0;
+  const timer = setInterval(() => {
+    if (fs.existsSync(file)) { clearInterval(timer); done(); }
+    else if (++ticks > 400) process.exit(2);
+  }, 5);
+}
+if (slow) { sample(); fs.writeFileSync(ready, ''); after(fastDone, () => {}); }
+else after(ready, () => { sample(); fs.writeFileSync(fastDone, ''); });
+`);
+  const resultDir = path.join(root, 'results');
+  fs.mkdirSync(resultDir);
+  const prior = path.join(resultDir, 'result.jtl');
+  fs.writeFileSync(prior, 'retain old evidence');
+  const [slow, fast] = await Promise.all(paths.map(jmxPath => runJmeter({ jmxPath, resultDir, jmeterPath: bin })));
+  assert.equal(slow.pass, false);
+  assert.equal(slow.p99, 900);
+  assert.equal(fast.pass, true);
+  assert.equal(fast.p99, 20);
+  assert.notEqual(slow.jtlPath, fast.jtlPath);
+  assert.notEqual(slow.reportPath, fast.reportPath);
+  for (const result of [slow, fast]) assert.equal(result.jtlSha256, createHash('sha256').update(fs.readFileSync(result.jtlPath)).digest('hex'));
+  assert.equal(fs.readFileSync(prior, 'utf8'), 'retain old evidence');
+});
 test('CLI performance regression is preserved in the same runId receipt and report', { skip: process.platform === 'win32' }, (t) => {
   const { root, argsFile } = fixture(t); applyInstallPlan(createInstallPlan(root, { filesDir: path.join(pkg, 'files'), version: PKG.version }));
   const reports = path.join(root, 'test-reports'); fs.mkdirSync(reports);
@@ -55,6 +95,7 @@ test('CLI performance regression is preserved in the same runId receipt and repo
   assert.equal(report.summary.pass, false); assert.equal(report.summary.baselineComparison.regressed, true);
   const status = JSON.parse(cli(['status', '--run-id', 'perf-regression', '--json']).stdout);
   assert.ok(status.tools.some((tool) => tool.checks?.some((c) => c.id === 'performance-baseline' && c.status === 'failed')), JSON.stringify(status));
+  assert.equal(status.tools.find(tool => tool.tool === 'run-jmeter').summary.jtlSha256, report.summary.jtlSha256);
   const before = fs.readFileSync(argsFile);
   assert.equal(cli(['run-jmeter', '--jmx', 'plan.jmx', '--threads', '7bad']).status, 2);
   assert.deepEqual(fs.readFileSync(argsFile), before);

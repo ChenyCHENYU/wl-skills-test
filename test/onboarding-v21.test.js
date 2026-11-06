@@ -217,12 +217,15 @@ test("v21: 第 13 个 Skill test-onboarding 安装内容含 SOP 与工具绑定"
   assert.ok(content.includes("不得把明文密码"), "安全边界应写死");
 });
 
-test("v21: init 会把 onboarding Skill 装进目标项目", () => {
+test("v21: init 安装薄入口且通过工具定位包内 onboarding Skill", () => {
   setupTmp();
   try {
     const r = runCli(["init"], TMP);
     assert.equal(r.status, 0, r.stderr);
-    assert.ok(existsSync(join(TMP, ".github", "skills", "onboarding", "test-onboarding", "SKILL.md")), "init 后 Skill 应就位");
+    assert.ok(existsSync(join(TMP, ".agents", "skills", "wl-skills-test", "SKILL.md")), "init 后薄入口应就位");
+    assert.equal(existsSync(join(TMP, ".github", "skills", "onboarding", "test-onboarding", "SKILL.md")), false);
+    const routed = JSON.parse(runCli(["route", "接入测试", "--json"], TMP).stdout);
+    assert.ok(routed.requiredFiles.every(existsSync));
   } finally {
     rmSync(TMP, { recursive: true, force: true });
   }

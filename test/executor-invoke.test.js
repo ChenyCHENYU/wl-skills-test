@@ -29,7 +29,7 @@ test('single test package: structured audit reuses native receipts; rejected par
   const planned = request({ operation: 'task', task: '检查测试代码规范', targets: ['tests/sample.test.js'], runId: 'invoke-audit' });
   assert.equal(planned.envelope.result.integration.ready, true);
   const targets = planned.envelope.result.integration.targets;
-  const directory = path.join(root, '.wl-skills-test/runs/invoke-audit');
+  const directory = path.join(root, '.wl-skills/state/test/runs/invoke-audit');
   const snapshot = () => JSON.stringify(fs.readdirSync(directory).sort().map(name => [name, fs.readFileSync(path.join(directory, name), 'utf8')]));
   const before = snapshot();
   const rejected = request({ operation: 'execute', runId: 'invoke-audit', executorId: 'audit', parameters: { targets, invented: true } });
@@ -46,4 +46,43 @@ test('single test package: structured audit reuses native receipts; rejected par
   assert.equal(result.envelope.result.integration.validationStatus, 'partial', 'audit 不替代计划要求的真实行为测试');
   const status = request({ operation: 'status', runId: 'invoke-audit' });
   assert.deepEqual(result.envelope.result.integration, status.envelope.result.integration);
+});
+
+test('public task → execute → status accepts equivalent relative and absolute targets without broadening scope', t => {
+  const { root, request } = fixture(t);
+  const relative = 'tests/sample.test.js';
+  const absolute = path.join(root, relative);
+  for (const [index, plannedTarget, executedTarget] of [
+    [0, relative, relative], [1, relative, absolute],
+    [2, absolute, relative], [3, absolute, absolute],
+  ]) {
+    const runId = `target-spelling-${index}`;
+    const planned = request({ operation: 'task', task: '检查测试代码规范', targets: [plannedTarget], runId });
+    assert.equal(planned.envelope.result.integration.ready, true);
+    const executed = request({ operation: 'execute', runId, executorId: 'audit', parameters: { targets: [executedTarget] } });
+    assert.equal(executed.envelope.ok, true, JSON.stringify(executed.envelope.error));
+    assert.equal(executed.envelope.result.integration.executionStatus, 'completed');
+    const reports = executed.envelope.result.execution.reportsDirectory;
+    t.after(() => fs.rmSync(reports, { recursive: true, force: true }));
+    const status = request({ operation: 'status', runId });
+    assert.deepEqual(executed.envelope.result.integration, status.envelope.result.integration);
+    assert.deepEqual(status.envelope.result.integration.targets, [fs.realpathSync(absolute)]);
+  }
+  const runId = 'target-boundary';
+  request({ operation: 'task', task: '检查测试代码规范', targets: [relative], runId });
+  const directory = path.join(root, '.wl-skills/state/test/runs', runId);
+  const snapshot = () => JSON.stringify(fs.readdirSync(directory).sort().map(name => [name, fs.readFileSync(path.join(directory, name), 'utf8')]));
+  const before = snapshot();
+  for (const target of ['tests', '../outside.test.js', path.join(path.dirname(root), 'outside.test.js')]) {
+    const rejected = request({ operation: 'execute', runId, executorId: 'audit', parameters: { targets: [target] } });
+    assert.equal(rejected.envelope.ok, false);
+    assert.equal(rejected.envelope.error.code, 'target-mismatch');
+    assert.equal(snapshot(), before, 'rejected ranges must not execute or append receipts');
+  }
+  for (const target of ['', '   ', null, 42]) {
+    const rejected = request({ operation: 'execute', runId, executorId: 'audit', parameters: { targets: [target] } });
+    assert.equal(rejected.envelope.ok, false);
+    assert.equal(rejected.envelope.error.code, 'invalid-executor-input');
+    assert.equal(snapshot(), before);
+  }
 });

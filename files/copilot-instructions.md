@@ -2,7 +2,7 @@
 
 本项目使用 `@agile-team/wl-skills-test`（v__WL_SKILLS_TEST_VERSION__），测试领域独立可用。
 
-每次代码或测试任务先运行 `npx @agile-team/wl-skills-test task "<任务>" --json`，仅规划，不执行业务请求。只读取返回的 `skillPaths` 和 `requiredFiles`；13 个技能的权威触发清单是 `.wl-skills-test/routes.v1.json`，覆盖 onboarding/plan/case/exec/quality/perf。
+每次代码或测试任务先运行 `node node_modules/@agile-team/wl-skills-test/bin/wl-skills-test.js task "<任务>" --json`，仅规划，不执行业务请求。 本地执行器缺失时仅可用已有同版本缓存：`npx --offline --yes --package @agile-team/wl-skills-test@__WL_SKILLS_TEST_VERSION__ wl-skills-test task "<任务>" --json`；无缓存明确未执行，不静默联网安装。只读取返回的 `skillPaths` 和 `requiredFiles`；13 个技能触发清单保留在执行包内，按 task 返回的实际路径读取，覆盖 onboarding/plan/case/exec/quality/perf。
 
 开工时简短说明 `matched / baseline / ambiguous / gap / not-applicable`、选定技能与约束。歧义先明确工作流；必要技能或规范缺失时报告 gap 和补充建议，不能声称约束就绪。普通代码任务只适用测试基线，不自动执行接口或压测。
 
